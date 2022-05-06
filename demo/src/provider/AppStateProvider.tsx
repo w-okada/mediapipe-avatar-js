@@ -50,6 +50,10 @@ export const AppStateProvider = ({ children }: Props) => {
     // (1) 初期化
     //// (1-1) Input初期化
     useEffect(() => {
+        navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: true,
+        });
         const loadInitialInputSource = async (path: string) => {
             const data = await loadURLAsDataURL(path);
             setInputSource(data);
