@@ -31,7 +31,8 @@ Definition: Frame update time is interval when some parts is updated.
 
 # Demo
 
-[demo](https://flect-lab-web.s3-us-west-2.amazonaws.com/P03_wokers/mediapipe-avatar-js-demo/index.html)
+[demo](https://d3iwgbxa9wipu8.cloudfront.net/P03_wokers/mediapipe-avatar-js-demo/index.html)
+[demo(slow)](https://flect-lab-web.s3-us-west-2.amazonaws.com/P03_wokers/mediapipe-avatar-js-demo/index.html)
 
 # Module Usage
 
