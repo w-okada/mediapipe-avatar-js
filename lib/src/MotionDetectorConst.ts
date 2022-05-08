@@ -23,4 +23,6 @@ export type MotionDetectorParams = {
     MPProcessWidth: number
     MPProcessHeight: number
     faceMovingAverageWindow: number
+
+    calcMode: number; // debug
 }

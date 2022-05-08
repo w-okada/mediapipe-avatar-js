@@ -25,7 +25,8 @@ const initialParams: MotionDetectorParams = {
     MPProcessWidth: 300,
     MPProcessHeight: 300,
 
-    faceMovingAverageWindow: 3
+    faceMovingAverageWindow: 3,
+    calcMode: 0 // for debug
 }
 export class MotionDetector {
     config: MotionDetectorConfig
@@ -141,8 +142,11 @@ export class MotionDetector {
         this.poseParams.cropExt = this.params.TFLitePoseCropExt
         this.poseParams.processWidth = this.params.TFLiteProcessWidth
         this.poseParams.processHeight = this.params.TFLiteProcessHeight
+        this.poseParams.calculate_mode = this.params.calcMode
+        this.poseParams.movingAverageWindow = this.params.faceMovingAverageWindow
         this.poseParamsMP.processWidth = this.params.MPProcessWidth
         this.poseParamsMP.processHeight = this.params.MPProcessHeight
+        this.poseParamsMP.movingAverageWindow = this.params.faceMovingAverageWindow
     }
 
     //////////////////////////////////////////
@@ -154,7 +158,15 @@ export class MotionDetector {
         this.configure()
     }
     setTFLiteAffineResizedFactor = (size: number) => {
-        this.poseParams.affineResizedFactor = size
+        this.params.TFLiteAffineResizedFactor = size
+        this.configure()
+    }
+    setMovingAverageWindow = (size: number) => {
+        this.params.faceMovingAverageWindow = size
+        this.configure()
+    }
+    setCalcMode = (mode: number) => {
+        this.params.calcMode = mode
         this.configure()
     }
     setUseMediapipe = (enable: boolean) => {
@@ -242,10 +254,10 @@ export class MotionDetector {
 
     latestFaces: faces.FacemeshPredictionMediapipe | null = null
     latestHands: hands.Hand[] | null = null
-    latestPoses: poses.Pose[] | null = null
+    latestPoses: poses.PosePredictionEx | null = null
     latestFacesMP: faces.FacemeshPredictionMediapipe | null = null
     latestHandsMP: hands.Hand[] | null = null
-    latestPosesMP: poses.Pose[] | null = null
+    latestPosesMP: poses.PosePredictionEx | null = null
 
 
     latestFaceRig: kalido.TFace | null = null
@@ -359,7 +371,8 @@ export class MotionDetector {
                 // this.count++
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore
-                const faceRig = kalido.Face.solve(this.latestFaces.rowPrediction[0].keypoints!, {
+                const faceRig = kalido.Face.solve(this.latestFaces.singlePersonKeypointsMovingAverage, {
+                    // const faceRig = kalido.Face.solve(this.latestFaces.rowPrediction[0].keypoints!, {
                     runtime: "mediapipe", // `mediapipe` or `tfjs`
                     imageSize: { height: snap.height, width: snap.width },
                     // imageSize: { height: 1, width: 1 },
@@ -499,14 +512,14 @@ export class MotionDetector {
 
         // console.log("POSE:::", this.latestPoses)
 
-        if (this.latestPoses && this.latestPoses.length > 0) {
-            this.latestPoses[0].keypoints.forEach((x) => {
+        if (this.latestPoses) {
+            this.latestPoses.singlePersonKeypointsMovingAverage!.forEach((x) => {
                 (x.x *= snap.width), (x.y *= snap.height);
                 (x.z! *= snap.width)
             });
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
-            const poseRig = kalido.Pose.solve(this.latestPoses[0].keypoints3D, this.latestPoses[0].keypoints, {
+            const poseRig = kalido.Pose.solve(this.latestPoses.singlePersonKeypoints3DMovingAverage, this.latestPoses.singlePersonKeypointsMovingAverage, {
                 // runtime: "mediapipe", // `mediapipe` or `tfjs`
                 runtime: "tfjs", // `mediapipe` or `tfjs`
                 imageSize: { height: snap.height, width: snap.width },
@@ -531,10 +544,10 @@ export class MotionDetector {
         }
         // console.log("POSE MP:::", this.latestPosesMP)
 
-        if (this.latestPosesMP && this.latestPosesMP.length > 0) {
+        if (this.latestPosesMP) {
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
-            const poseRig = kalido.Pose.solve(this.latestPosesMP[0].keypoints3D, this.latestPosesMP[0].keypoints, {
+            const poseRig = kalido.Pose.solve(this.latestPosesMP.singlePersonKeypoints3DMovingAverage, this.latestPosesMP.singlePersonKeypointsMovingAverage, {
                 // runtime: "mediapipe", // `mediapipe` or `tfjs`
                 runtime: "tfjs", // `mediapipe` or `tfjs`
                 imageSize: { height: snap.height, width: snap.width },

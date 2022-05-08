@@ -30,7 +30,7 @@
         "@babel/preset-react": "^7.16.7",
         "@babel/preset-typescript": "^7.16.7",
         "@babel/runtime": "^7.17.9",
-        "@types/react": "^18.0.8",
+        "@types/react": "^18.0.9",
         "@types/react-dom": "^18.0.3",
         "@typescript-eslint/eslint-plugin": "^5.22.0",
         "@typescript-eslint/parser": "^5.22.0",
@@ -52,8 +52,10 @@
         "webpack-dev-server": "^4.9.0"
     },
     "dependencies": {
-        "@dannadori/demo-base": "^1.0.8",
-        "@dannadori/mediapipe-avatar-js": "^1.0.3",
+        "@dannadori/demo-base": "^1.0.11",
+        "@dannadori/mediapipe-avatar-js": "^1.0.14",
+        "@mediapipe/control_utils_3d": "^0.3.1635987963",
+        "@mediapipe/pose": "^0.5.1635988162",
         "react": "^18.1.0",
         "react-dom": "^18.1.0"
     }

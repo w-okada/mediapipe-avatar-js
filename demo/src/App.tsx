@@ -7,11 +7,13 @@ import { CommonSlider, CommonSliderProps, CommonSwitch, CommonSwitchProps, Credi
 import * as THREE from "three";
 import { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { VRM } from "@pixiv/three-vrm";
-import { poses } from "@dannadori/mediapipe-avatar-js";
 let GlobalLoopID = 0;
+import { POSE_CONNECTIONS, POSE_LANDMARKS_LEFT, POSE_LANDMARKS_RIGHT } from "@mediapipe/pose";
+const LandmarkGrid = window.LandmarkGrid;
+console.log("LANDMARK_GRID", LandmarkGrid);
 
 const Controller = () => {
-    const { inputSourceType, setInputSourceType, setInputSource, threeState, detector, updateDetector, applyMediapipe, setApplyMediapipe } = useAppState();
+    const { inputSourceType, setInputSourceType, setInputSource, threeState, detector, updateDetector, applyMediapipe, setApplyMediapipe, avatar } = useAppState();
     const [_lastUpdateTime, setLastUpdateTime] = useState(0);
 
     const videoInputSelectorProps: VideoInputSelectorProps = {
@@ -60,6 +62,16 @@ const Controller = () => {
         },
     };
 
+    const legControlProps: CommonSwitchProps = {
+        id: "leg-control-switch",
+        title: "leg-control-switch",
+        currentValue: avatar ? avatar!.enableLegs : false,
+        onChange: (value: boolean) => {
+            avatar!.enableLegs = value;
+            setLastUpdateTime(new Date().getTime());
+        },
+    };
+
     const tfliteProcessWidthSliderProps: CommonSliderProps = {
         id: "tflite-process-width-slider",
         title: "tflite process width",
@@ -89,20 +101,20 @@ const Controller = () => {
         integer: true,
     };
 
-    // const movingAverageWindowSliderProps: CommonSliderProps = {
-    //     id: "moving-average-window-slider",
-    //     title: "moving average window",
-    //     currentValue: motionDetectorState?.motionDetector ? motionDetectorState!.motionDetector!.params.faceMovingAverageWindow : 3,
-    //     max: 100,
-    //     min: 1,
-    //     step: 1,
-    //     width: "30%",
-    //     onChange: (value: number) => {
-    //         motionDetectorState!.motionDetector!.set
-    //         reconfigMotionDetector();
-    //     },
-    //     integer: true,
-    // };
+    const movingAverageWindowSliderProps: CommonSliderProps = {
+        id: "moving-average-window-slider",
+        title: "moving average window",
+        currentValue: detector ? detector!.params.faceMovingAverageWindow : 1,
+        max: 100,
+        min: 1,
+        step: 1,
+        width: "30%",
+        onChange: (value: number) => {
+            detector!.setMovingAverageWindow(value);
+            updateDetector();
+        },
+        integer: true,
+    };
 
     const affineResizedSliderProps: CommonSliderProps = {
         id: "affine-resized-slider",
@@ -132,6 +144,21 @@ const Controller = () => {
     //     },
     //     integer: false,
     // };
+
+    const calcModeSliderProps: CommonSliderProps = {
+        id: "calcmode-slider",
+        title: "calcmode(debug) ",
+        currentValue: detector ? detector!.params.calcMode : 0,
+        max: 2,
+        min: 0,
+        step: 1,
+        width: "30%",
+        onChange: (value: number) => {
+            detector!.setCalcMode(value);
+            updateDetector();
+        },
+        integer: true,
+    };
 
     const perspectiveCameraXSliderProps: CommonSliderProps = {
         id: "perspective-camera-x-slider",
@@ -255,10 +282,13 @@ const Controller = () => {
             <CommonSwitch {...useMediapipeProps}></CommonSwitch>
             <CommonSwitch {...applyMediaPipeProps}></CommonSwitch>
             <CommonSwitch {...useFullbodyCaptureProps}></CommonSwitch>
+            <CommonSwitch {...legControlProps}></CommonSwitch>
 
+            <CommonSlider {...movingAverageWindowSliderProps}></CommonSlider>
             <CommonSlider {...affineResizedSliderProps}></CommonSlider>
             <CommonSlider {...tfliteProcessHeightSliderProps}></CommonSlider>
             <CommonSlider {...tfliteProcessWidthSliderProps}></CommonSlider>
+            <CommonSlider {...calcModeSliderProps}></CommonSlider>
 
             <CommonSlider {...perspectiveCameraXSliderProps}></CommonSlider>
             <CommonSlider {...perspectiveCameraYSliderProps}></CommonSlider>
@@ -272,6 +302,7 @@ const Controller = () => {
 
 const App = () => {
     const { inputSource, threeState, applyMediapipe, detector, avatar, setAvatarVRM } = useAppState();
+    const [grid, setGrid] = useState<any>();
     // window.renderer = new THREE.WebGLRenderer();
     // window.renderer.setSize(320, 240);
     // window.renderer.setPixelRatio(window.devicePixelRatio);
@@ -311,11 +342,11 @@ const App = () => {
 
             //// (1-2) シーン設定
             const scene = new THREE.Scene();
-            scene.add(new THREE.AxesHelper(5));
+            // scene.add(new THREE.AxesHelper(5));
             scene.add(new THREE.GridHelper(10, 10));
             //// (1-3)カメラの生成
             const camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
-            camera.position.set(0, 0.7, -3);
+            camera.position.set(0, 1.3, -1.5);
             camera.rotation.set(0, Math.PI, 0);
 
             //// (1-4)レンダラーの生成
@@ -363,6 +394,27 @@ const App = () => {
         initThree();
     }, []);
 
+    useEffect(() => {
+        const landmarkContainer = document.getElementById("grid") as HTMLDivElement;
+        const grid = new LandmarkGrid(landmarkContainer, {
+            connectionColor: 0xcccccc,
+            definedColors: [
+                { name: "LEFT", value: 0xffa500 },
+                { name: "RIGHT", value: 0x00ffff },
+            ],
+            range: 2,
+            fitToGrid: true,
+            labelSuffix: "m",
+            landmarkSize: 2,
+            numCellsPerAxis: 4,
+            showHidden: false,
+            centered: true,
+            isRotating: false,
+            rotationSpeed: 0.1,
+        });
+        setGrid(grid);
+    }, []);
+
     // (B) Processing
     //// (1) Main
     useEffect(() => {
@@ -383,24 +435,24 @@ const App = () => {
             return (sum / perfs.length).toFixed(3);
         };
 
-        const drawPoses = (_poses: poses.Pose[] | null, _posesMP: poses.Pose[] | null) => {
-            // const test = document.getElementById("test") as HTMLCanvasElement;
-            // test.width = 300;
-            // test.height = 300;
-            // const testCtx = test.getContext("2d")!;
-            // if (poses && poses.length > 0) {
-            //     testCtx.fillStyle = "#ff0000";
-            //     poses[0].keypoints.forEach((x) => {
-            //         testCtx.fillRect(x.x * test.width, x.y * test.height, 5, 5);
-            //     });
-            // }
-            // if (posesMP && posesMP.length > 0) {
-            //     testCtx.fillStyle = "#00ff00";
-            //     posesMP[0].keypoints.forEach((x) => {
-            //         testCtx.fillRect(x.x, x.y, 5, 5);
-            //     });
-            // }
-        };
+        // const drawPoses = (_poses: poses.Pose[] | null, _posesMP: poses.Pose[] | null) => {
+        //     // const test = document.getElementById("test") as HTMLCanvasElement;
+        //     // test.width = 300;
+        //     // test.height = 300;
+        //     // const testCtx = test.getContext("2d")!;
+        //     // if (poses && poses.length > 0) {
+        //     //     testCtx.fillStyle = "#ff0000";
+        //     //     poses[0].keypoints.forEach((x) => {
+        //     //         testCtx.fillRect(x.x * test.width, x.y * test.height, 5, 5);
+        //     //     });
+        //     // }
+        //     // if (posesMP && posesMP.length > 0) {
+        //     //     testCtx.fillStyle = "#00ff00";
+        //     //     posesMP[0].keypoints.forEach((x) => {
+        //     //         testCtx.fillRect(x.x, x.y, 5, 5);
+        //     //     });
+        //     // }
+        // };
 
         const render = async () => {
             if (!detector) {
@@ -410,6 +462,9 @@ const App = () => {
             if (!avatar) {
                 console.log("avatar null");
                 return;
+            }
+            if (!grid) {
+                console.log("grid null");
             }
             console.log("detector and avatar not null");
 
@@ -427,12 +482,24 @@ const App = () => {
             try {
                 if (snap.width > 0 && snap.height > 0) {
                     const { poses, posesMP, faceRig, leftHandRig, rightHandRig, poseRig, faceRigMP, leftHandRigMP, rightHandRigMP, poseRigMP } = await detector.predict(snap);
-                    drawPoses(poses, posesMP);
+                    // drawPoses(poses, posesMP);
 
                     if (applyMediapipe) {
                         avatar.updatePose(faceRigMP, poseRigMP, leftHandRigMP, rightHandRigMP);
+                        if (posesMP) {
+                            grid.updateLandmarks(posesMP.singlePersonKeypoints3DMovingAverage, POSE_CONNECTIONS, [
+                                { list: Object.values(POSE_LANDMARKS_LEFT), color: "LEFT" },
+                                { list: Object.values(POSE_LANDMARKS_RIGHT), color: "RIGHT" },
+                            ]);
+                        }
                     } else {
                         avatar.updatePose(faceRig, poseRig, leftHandRig, rightHandRig);
+                        if (poses) {
+                            grid.updateLandmarks(poses.singlePersonKeypoints3DMovingAverage, POSE_CONNECTIONS, [
+                                { list: Object.values(POSE_LANDMARKS_LEFT), color: "LEFT" },
+                                { list: Object.values(POSE_LANDMARKS_RIGHT), color: "RIGHT" },
+                            ]);
+                        }
                     }
                 }
             } catch (error) {
@@ -456,17 +523,24 @@ const App = () => {
             console.log("CANCEL", renderRequestId);
             cancelAnimationFrame(renderRequestId);
         };
-    }, [inputSourceElement, detector, avatar, applyMediapipe]);
+    }, [inputSourceElement, detector, avatar, applyMediapipe, grid]);
 
     return (
         <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", objectFit: "contain", alignItems: "flex-start" }}>
-            <div style={{ width: "100%", display: "flex", objectFit: "contain", alignItems: "flex-start" }}>
-                <div
-                    style={{ width: "20%", objectFit: "contain" }}
-                    ref={(ref) => {
-                        ref?.replaceChildren(inputSourceElement);
-                    }}
-                ></div>
+            <div style={{ width: "100%", height: "100%", display: "flex", objectFit: "contain", alignItems: "flex-start" }}>
+                <div style={{ width: "20%", height: "100%", display: "flex", flexDirection: "column" }}>
+                    <div
+                        style={{ width: "100%", objectFit: "contain", height: "50%" }}
+                        ref={(ref) => {
+                            ref?.replaceChildren(inputSourceElement);
+                        }}
+                    ></div>
+
+                    <div id="cont" style={{ backgroundColor: "#99999999", width: "100%", height: "50%" }}>
+                        <div id="grid" style={{ backgroundColor: "#99999999", width: "100%", height: "100%" }} />
+                    </div>
+                </div>
+
                 <div id="avatar" style={{ width: "50%", height: "100%", objectFit: "contain" }}></div>
                 <div style={{ width: "30%", marginLeft: "3%", objectFit: "contain" }}>
                     <Controller></Controller>
@@ -475,7 +549,6 @@ const App = () => {
             </div>
             <div style={{ width: "100%", display: "flex", objectFit: "contain", alignItems: "flex-start" }}>
                 <canvas id="test" style={{ width: "33%", objectFit: "contain" }}></canvas>
-                <canvas id="mask" style={{ width: "33%", objectFit: "contain" }}></canvas>
             </div>
         </div>
     );

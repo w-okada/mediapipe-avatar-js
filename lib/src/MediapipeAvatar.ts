@@ -123,6 +123,11 @@ export class MediapipeAvator {
             z: poseRig.LeftHand.z,
             y: riggedHand.LeftWrist.y,
             x: riggedHand.LeftWrist.x,
+
+            // z: poseRig.RightHand.z,
+            // y: riggedHand.LeftWrist.y,
+            // x: riggedHand.LeftWrist.x,
+
         });
         this.rigRotation("LeftRingProximal", riggedHand.LeftRingProximal);
         this.rigRotation("LeftRingIntermediate", riggedHand.LeftRingIntermediate);
@@ -147,6 +152,11 @@ export class MediapipeAvator {
             z: poseRig.RightHand.z,
             y: riggedHand.RightWrist.y,
             x: riggedHand.RightWrist.x,
+
+            // z: poseRig.LeftHand.z,
+            // y: riggedHand.RightWrist.y,
+            // x: riggedHand.RightWrist.x,
+
         });
         this.rigRotation("RightRingProximal", riggedHand.RightRingProximal);
         this.rigRotation("RightRingIntermediate", riggedHand.RightRingIntermediate);
