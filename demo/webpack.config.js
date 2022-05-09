@@ -3,8 +3,8 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = {
-    // mode: "development",
-    mode: "production",
+    mode: "development",
+    // mode: "production",
     entry: path.resolve(__dirname, "src/index.tsx"),
     output: {
         path: path.resolve(__dirname, "dist"),
@@ -47,6 +47,16 @@ module.exports = {
     devServer: {
         static: {
             directory: path.join(__dirname, "dist"),
+        },
+        open: true,
+        port: 3000,
+        https: true,
+        allowedHosts: "all",
+        client: {
+            overlay: {
+                errors: true,
+                warnings: false,
+            },
         },
     },
 };

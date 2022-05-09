@@ -53,7 +53,7 @@
     },
     "dependencies": {
         "@dannadori/demo-base": "^1.0.11",
-        "@dannadori/mediapipe-avatar-js": "^1.0.14",
+        "@dannadori/mediapipe-avatar-js": "^1.0.15",
         "@mediapipe/control_utils_3d": "^0.3.1635987963",
         "@mediapipe/pose": "^0.5.1635988162",
         "react": "^18.1.0",

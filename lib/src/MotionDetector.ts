@@ -319,7 +319,10 @@ export class MotionDetector {
 
         try {
             const promiss = [this.facePromise, this.handPromise, this.posePromise, this.facePromiseMP, this.handPromiseMP, this.posePromiseMP].filter(x => { return x !== null })
-            await Promise.race(promiss)
+            if (promiss.length > 0) {
+                await Promise.race(promiss)
+
+            }
         } catch (err) {
             console.log("catch error:::", err)
         }

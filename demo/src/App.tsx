@@ -10,7 +10,7 @@ import { VRM } from "@pixiv/three-vrm";
 let GlobalLoopID = 0;
 import { POSE_CONNECTIONS, POSE_LANDMARKS_LEFT, POSE_LANDMARKS_RIGHT } from "@mediapipe/pose";
 const LandmarkGrid = window.LandmarkGrid;
-console.log("LANDMARK_GRID", LandmarkGrid);
+// console.log("LANDMARK_GRID", LandmarkGrid);
 
 const Controller = () => {
     const { inputSourceType, setInputSourceType, setInputSource, threeState, detector, updateDetector, applyMediapipe, setApplyMediapipe, avatar } = useAppState();
@@ -379,7 +379,6 @@ const App = () => {
             scene.add(light);
 
             //// (1-7) ステート設定
-            console.log("three init");
             threeState.init({
                 scene: scene,
                 camera: camera,
@@ -466,7 +465,7 @@ const App = () => {
             if (!grid) {
                 console.log("grid null");
             }
-            console.log("detector and avatar not null");
+            // console.log("detector and avatar not null");
 
             const start = performance.now();
             [snap].forEach((x) => {

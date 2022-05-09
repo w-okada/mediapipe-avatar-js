@@ -1,6 +1,6 @@
 {
     "name": "@dannadori/mediapipe-avatar-js",
-    "version": "1.0.14",
+    "version": "1.0.15",
     "description": "",
     "main": "dist/index.js",
     "scripts": {
@@ -34,9 +34,9 @@
         "webpack-cli": "^4.9.2"
     },
     "dependencies": {
-        "@dannadori/blaze-pose-worker-js": "^0.0.27",
-        "@dannadori/face-landmark-detection-worker-js": "^0.0.15",
-        "@dannadori/hand-pose-detection-worker-js": "^1.0.19",
+        "@dannadori/blaze-pose-worker-js": "^0.0.28",
+        "@dannadori/face-landmark-detection-worker-js": "^0.0.16",
+        "@dannadori/hand-pose-detection-worker-js": "^1.0.21",
         "@pixiv/three-vrm": "^0.6.11"
     }
 }
