@@ -1,8 +1,9 @@
 
-import { VRM, VRMSchema } from "@pixiv/three-vrm";
+import { GLTFNode, VRM, VRMSchema } from "@pixiv/three-vrm";
 import { Face, Side, TFace, THand, TPose, Utils, Vector } from "./kalido";
+import { IK, IKChain, IKJoint } from "three-ik";
 import * as THREE from "three";
-
+import { PosePredictionEx } from "@dannadori/blaze-pose-worker-js";
 export type AvatarOffset = {
     x: number,
     y: number,
@@ -19,9 +20,36 @@ export class MediapipeAvator {
 
     oldLookTarget = new THREE.Euler();
 
-    constructor(avatar: VRM, offset: AvatarOffset = { x: 0, y: 0, z: 0 }) {
+    leftArmIK = new IK()
+    leftIKChain = new IKChain()
+    leftArmBones: GLTFNode[] = []
+    leftArmIKBones: THREE.Bone[] = []
+    leftArmBoneNames = [VRMSchema.HumanoidBoneName.LeftShoulder, VRMSchema.HumanoidBoneName.LeftUpperArm, VRMSchema.HumanoidBoneName.LeftLowerArm, VRMSchema.HumanoidBoneName.LeftHand]
+    leftArmTarget = new THREE.Mesh(new THREE.SphereGeometry(0.05), new THREE.MeshBasicMaterial({ color: "#ff000" }));
+    constructor(avatar: VRM, scene: THREE.Scene, offset: AvatarOffset = { x: 0, y: 0, z: 0 }) {
         this.avatar = avatar
         this.offset = offset
+
+        for (let i = 0; i < this.leftArmBoneNames.length; i++) {
+            const ikBone = new THREE.Bone()
+            const bone = avatar.humanoid!.getBoneNode(this.leftArmBoneNames[i])!
+            if (i == 0) {
+                bone.getWorldPosition(ikBone.position);
+            } else {
+                ikBone.position.set(bone.position.x, bone.position.y, bone.position.z)
+                this.leftArmIKBones[i - 1].add(ikBone)
+            }
+            this.leftArmIKBones.push(ikBone)
+            this.leftArmBones.push(bone)
+
+            const target = i == this.leftArmBoneNames.length - 1 ? this.leftArmTarget : null
+            this.leftIKChain.add(new IKJoint(ikBone, {}), { target })
+        }
+        this.leftArmIK.add(this.leftIKChain)
+
+        scene.add(this.leftArmIK.getRootBone());
+        scene.add(this.leftArmTarget)
+
     }
     setOffset(offset: AvatarOffset) {
         this.offset = offset
@@ -195,6 +223,107 @@ export class MediapipeAvator {
                 this.rigRightHand(rightHandRig, poseRig)
             }
         }
+    }
+
+
+
+    rigUpperShaft = (riggedPose: TPose) => {
+        this.rigRotation("Hips", riggedPose.Hips.rotation, 0.7);
+        this.rigPosition(
+            "Hips",
+            {
+                x: riggedPose.Hips.position.x, // Reverse direction
+                y: riggedPose.Hips.position.y + 1, // Add a bit of height
+                z: -riggedPose.Hips.position.z, // Reverse direction
+            },
+            1,
+            0.07
+        );
+
+        this.rigRotation("Chest", riggedPose.Spine, 0.25, 0.3);
+        this.rigRotation("Spine", riggedPose.Spine, 0.45, 0.3);
+    };
+
+
+
+
+    updatePoseWithRaw = (faceRig: TFace | null, poseRig: TPose | null, _leftHandRig: THand<Side> | null, _rightHandRig: THand<Side> | null, poses: PosePredictionEx | null) => {
+        if (this.enableFace && faceRig) {
+            this.rigFace(faceRig);
+        }
+        if (this.enableUpperBody && poseRig) {
+            this.rigUpperShaft(poseRig)
+        }
+        console.log(poses)
+
+        // this.leftArmIK.solve()
+        // const updateArm = (bones: THREE.Bone[], nodes: GLTFNode[], offset: number) => {
+        //     const q = new THREE.Quaternion();
+        //     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), offset);
+        //     nodes[0].setRotationFromQuaternion(bones[0].quaternion.multiply(q));
+        //     nodes[1].setRotationFromQuaternion(bones[1].quaternion);
+        //     nodes[2].setRotationFromQuaternion(bones[2].quaternion);
+        //     nodes[3].setRotationFromQuaternion(bones[3].quaternion);
+        // };
+        // updateArm(this.leftArmIKBones, this.leftArmBones, -Math.PI / 2);
+
+        // this.leftArmTarget.position.x += 0.1
+
+        // for (let j = 0; j < 2; j++) {
+        //     // チェーンの生成
+        //     const bones = []; // ボーン
+        //     const nodes = []; // ノード
+        //     for (let i = 0; i < 3; i++) {
+        //         // ボーンとノードの生成
+        //         const bone = new THREE.Bone();
+        //         const node = this.avatar.humanoid!.getBoneNode(boneName[j][i])!;
+
+        //         if (i == 0) {
+        //             node.getWorldPosition(bone.position);
+        //             console.log("set postion to bone1", node.position.x, node.position.y, node.position.z)
+        //         } else {
+        //             bone.position.set(node.position.x, node.position.y, node.position.z);
+        //             console.log("set postion to bone2", node.position.x, node.position.y, node.position.z)
+        //             bones[i - 1].add(bone);
+        //         }
+        //         bones.push(bone);
+        //         nodes.push(node);
+
+        //         // // チェーンに追加
+        //         // const target = i === 2 ? movingTarget : null;
+        //         // chainList[j].add(new IKJoint(bone, {}), { target });
+        //     }
+
+        //     //     // IKシステムにチェーン追加
+        //     //     ikList[j].add(chainList[j]);
+
+        //     //     // リストに追加
+        //     //     bonesList.push(bones);
+        //     //     nodesList.push(nodes);
+
+        //     //     // ルートボーンの追加
+        //     //     scene.add(ikList[j].getRootBone());
+
+        //     //     // ヘルパーの追加
+        //     //     //const helper = new IKHelper(ikList[j])
+        //     //     //scene.add(helper)
+        //     // }
+        // };
+
+
+
+        // if (this.enableLegs && poseRig) {
+        //     this.rigLegs(poseRig)
+        // }
+        // if (this.enableHands && poseRig) {
+        //     if (leftHandRig) {
+        //         this.rigLeftHand(leftHandRig, poseRig)
+        //     }
+
+        //     if (rightHandRig) {
+        //         this.rigRightHand(rightHandRig, poseRig)
+        //     }
+        // }
     }
 
 
