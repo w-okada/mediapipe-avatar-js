@@ -5,15 +5,18 @@ import { useAppState } from "./provider/AppStateProvider";
 import { DataTypesOfDataURL, getDataTypeOfDataURL } from "./utils/urlReader";
 import { CommonSlider, CommonSliderProps, CommonSwitch, CommonSwitchProps, Credit, CreditProps, VideoInputSelector, VideoInputSelectorProps } from "@dannadori/demo-base";
 import * as THREE from "three";
+
 import { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { VRM } from "@pixiv/three-vrm";
 let GlobalLoopID = 0;
 import { POSE_CONNECTIONS, POSE_LANDMARKS_LEFT, POSE_LANDMARKS_RIGHT } from "@mediapipe/pose";
+// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+
 const LandmarkGrid = window.LandmarkGrid;
-// console.log("LANDMARK_GRID", LandmarkGrid);
+console.log("LANDMARK_GRID", LandmarkGrid);
 
 const Controller = () => {
-    const { inputSourceType, setInputSourceType, setInputSource, threeState, detector, updateDetector, applyMediapipe, setApplyMediapipe, avatar } = useAppState();
+    const { inputSourceType, setInputSourceType, setInputSource, threeState, updateDetector, applyMediapipe, setApplyMediapipe, detector, avatar } = useAppState();
     const [_lastUpdateTime, setLastUpdateTime] = useState(0);
 
     const videoInputSelectorProps: VideoInputSelectorProps = {
@@ -301,12 +304,12 @@ const Controller = () => {
 };
 
 const App = () => {
-    const { inputSource, threeState, applyMediapipe, detector, avatar, setAvatarVRM } = useAppState();
+    const { inputSource, threeState, applyMediapipe, setAvatarVRM, detector, avatar } = useAppState();
+
     const [grid, setGrid] = useState<any>();
     // window.renderer = new THREE.WebGLRenderer();
     // window.renderer.setSize(320, 240);
     // window.renderer.setPixelRatio(window.devicePixelRatio);
-
     // (X) InputSource設定
     const inputSourceElement = useMemo(() => {
         let elem: HTMLVideoElement | HTMLImageElement;
@@ -377,6 +380,10 @@ const App = () => {
             const light = new THREE.DirectionalLight(0xffffff);
             light.position.set(-1, 1, -1).normalize();
             scene.add(light);
+            // @ts-ignore
+            // const controls = new OrbitControls(camera, renderer.domElement);
+            // controls.enableDamping = true;
+            // controls.dampingFactor = 0.2;
 
             //// (1-7) ステート設定
             threeState.init({
@@ -386,9 +393,11 @@ const App = () => {
                 loader: loader,
                 charactrer: vrm,
                 light: light,
+                // controls: controls,
             });
-            //// (1-8) avatar 登録
-            setAvatarVRM(vrm);
+            // (1-8) avatar 登録
+            console.log("three init !!!!!!!!");
+            setAvatarVRM(vrm, scene);
         };
         initThree();
     }, []);
@@ -434,25 +443,6 @@ const App = () => {
             return (sum / perfs.length).toFixed(3);
         };
 
-        // const drawPoses = (_poses: poses.Pose[] | null, _posesMP: poses.Pose[] | null) => {
-        //     // const test = document.getElementById("test") as HTMLCanvasElement;
-        //     // test.width = 300;
-        //     // test.height = 300;
-        //     // const testCtx = test.getContext("2d")!;
-        //     // if (poses && poses.length > 0) {
-        //     //     testCtx.fillStyle = "#ff0000";
-        //     //     poses[0].keypoints.forEach((x) => {
-        //     //         testCtx.fillRect(x.x * test.width, x.y * test.height, 5, 5);
-        //     //     });
-        //     // }
-        //     // if (posesMP && posesMP.length > 0) {
-        //     //     testCtx.fillStyle = "#00ff00";
-        //     //     posesMP[0].keypoints.forEach((x) => {
-        //     //         testCtx.fillRect(x.x, x.y, 5, 5);
-        //     //     });
-        //     // }
-        // };
-
         const render = async () => {
             if (!detector) {
                 console.log("detector null");
@@ -493,6 +483,7 @@ const App = () => {
                         }
                     } else {
                         avatar.updatePose(faceRig, poseRig, leftHandRig, rightHandRig);
+                        // avatar.updatePoseWithRaw(faceRig, poseRig, leftHandRig, rightHandRig, poses);
                         if (poses) {
                             grid.updateLandmarks(poses.singlePersonKeypoints3DMovingAverage, POSE_CONNECTIONS, [
                                 { list: Object.values(POSE_LANDMARKS_LEFT), color: "LEFT" },
@@ -504,6 +495,7 @@ const App = () => {
             } catch (error) {
                 console.log(error);
             }
+            // threeState.controls.update();
 
             threeState.renderer!.render(threeState.scene!, threeState.camera!);
             if (GlobalLoopID === LOOP_ID) {
@@ -522,7 +514,7 @@ const App = () => {
             console.log("CANCEL", renderRequestId);
             cancelAnimationFrame(renderRequestId);
         };
-    }, [inputSourceElement, detector, avatar, applyMediapipe, grid]);
+    }, [inputSourceElement, applyMediapipe, grid, detector, avatar]);
 
     return (
         <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", objectFit: "contain", alignItems: "flex-start" }}>
@@ -541,9 +533,7 @@ const App = () => {
                 </div>
 
                 <div id="avatar" style={{ width: "50%", height: "100%", objectFit: "contain" }}></div>
-                <div style={{ width: "30%", marginLeft: "3%", objectFit: "contain" }}>
-                    <Controller></Controller>
-                </div>
+                <div style={{ width: "30%", marginLeft: "3%", objectFit: "contain" }}>{<Controller></Controller>}</div>
                 <div style={{ position: "absolute", top: "2%", left: "2%", background: "#000000", color: "#aabbaa" }} id="info"></div>
             </div>
             <div style={{ width: "100%", display: "flex", objectFit: "contain", alignItems: "flex-start" }}>

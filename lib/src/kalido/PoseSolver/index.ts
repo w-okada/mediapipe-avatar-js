@@ -54,8 +54,8 @@ export class PoseSolver {
         const Legs = enableLegs ? calcLegs(lm3d) : null;
 
         //DETECT OFFSCREEN AND RESET VALUES TO DEFAULTS
-        const rightHandOffscreen = lm3d[15].y > 0.1 || (lm3d[15].visibility ?? 0) < 0.10 || 0.995 < lm2d[15].y;
-        const leftHandOffscreen = lm3d[16].y > 0.1 || (lm3d[16].visibility ?? 0) < 0.10 || 0.995 < lm2d[16].y;
+        const rightHandOffscreen = lm3d[15].y > 0.1 || (lm3d[15].visibility ?? 0) < 0.05 || 0.995 < lm2d[15].y;
+        const leftHandOffscreen = lm3d[16].y > 0.1 || (lm3d[16].visibility ?? 0) < 0.05 || 0.995 < lm2d[16].y;
 
         const leftFootOffscreen = lm3d[23].y > 0.1 || (lm3d[23].visibility ?? 0) < 0.80 || Hips.Hips.position.z > -0.4;
         const rightFootOffscreen = lm3d[24].y > 0.1 || (lm3d[24].visibility ?? 0) < 0.80 || Hips.Hips.position.z > -0.4;

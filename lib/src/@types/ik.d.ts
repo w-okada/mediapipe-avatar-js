@@ -1,4 +1,4 @@
-declare module 'three-ik' {
+declare module '@dannadori/three-ik' {
     import { Bone, Object3D, Color } from 'three';
 
     class IK {

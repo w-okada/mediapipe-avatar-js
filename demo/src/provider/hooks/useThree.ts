@@ -10,6 +10,7 @@ export type UseThreeState = {
     loader?: GLTFLoader;
     charactrer?: VRM;
     light?: THREE.DirectionalLight
+    controls?: any
 
     /// function
 };
@@ -23,6 +24,7 @@ export type ThreeStateInitProps = {
     loader: GLTFLoader;
     charactrer: VRM;
     light: THREE.DirectionalLight
+    controls: any
 }
 export const useThree = (): UseThreeStateAndMethods => {
     const [threeState, setThreeState] = useState<UseThreeState | null>(null)

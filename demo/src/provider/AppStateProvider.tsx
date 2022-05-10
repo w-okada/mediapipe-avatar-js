@@ -18,7 +18,7 @@ type AppStateValue = {
     setApplyMediapipe: (val: boolean) => void;
 
     threeState: UseThreeStateAndMethods;
-    setAvatarVRM: (vrm: VRM) => void;
+    setAvatarVRM: (vrm: VRM, scene: THREE.Scene) => void;
     avatar: MediapipeAvator | undefined;
     detector: MotionDetector | undefined;
     updateDetector: () => void;
@@ -75,8 +75,9 @@ export const AppStateProvider = ({ children }: Props) => {
 
     // (2) update
     //// (2-1) register avatar
-    const setAvatarVRM = (vrm: VRM) => {
-        avatarRef.current = new MediapipeAvator(vrm);
+    const setAvatarVRM = (vrm: VRM, scene: THREE.Scene) => {
+        avatarRef.current = new MediapipeAvator(vrm, scene);
+        avatarRef.current.enableHands = false;
         setAvatar(avatarRef.current);
     };
 
