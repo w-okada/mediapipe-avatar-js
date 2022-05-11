@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { VRM } from "@pixiv/three-vrm";
 import { useState } from "react";
-
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 export type UseThreeState = {
     scene?: THREE.Scene,
     camera?: THREE.PerspectiveCamera;
@@ -10,7 +10,7 @@ export type UseThreeState = {
     loader?: GLTFLoader;
     charactrer?: VRM;
     light?: THREE.DirectionalLight
-    controls?: any
+    controls?: OrbitControls
 
     /// function
 };
@@ -24,7 +24,7 @@ export type ThreeStateInitProps = {
     loader: GLTFLoader;
     charactrer: VRM;
     light: THREE.DirectionalLight
-    controls: any
+    controls: OrbitControls
 }
 export const useThree = (): UseThreeStateAndMethods => {
     const [threeState, setThreeState] = useState<UseThreeState | null>(null)

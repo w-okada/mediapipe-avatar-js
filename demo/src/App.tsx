@@ -3,20 +3,20 @@ import "./App.css";
 import { useAppState } from "./provider/AppStateProvider";
 
 import { DataTypesOfDataURL, getDataTypeOfDataURL } from "./utils/urlReader";
-import { CommonSlider, CommonSliderProps, CommonSwitch, CommonSwitchProps, Credit, CreditProps, VideoInputSelector, VideoInputSelectorProps } from "@dannadori/demo-base";
+import { CommonSelector, CommonSelectorProps, CommonSlider, CommonSliderProps, CommonSwitch, CommonSwitchProps, Credit, CreditProps, VideoInputSelector, VideoInputSelectorProps } from "@dannadori/demo-base";
 import * as THREE from "three";
 
 import { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { VRM } from "@pixiv/three-vrm";
 let GlobalLoopID = 0;
 import { POSE_CONNECTIONS, POSE_LANDMARKS_LEFT, POSE_LANDMARKS_RIGHT } from "@mediapipe/pose";
-// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
 const LandmarkGrid = window.LandmarkGrid;
 console.log("LANDMARK_GRID", LandmarkGrid);
 
 const Controller = () => {
-    const { inputSourceType, setInputSourceType, setInputSource, threeState, updateDetector, applyMediapipe, setApplyMediapipe, detector, avatar } = useAppState();
+    const { inputSourceType, setInputSourceType, setInputSource, /*threeState,*/ updateDetector, applyMediapipe, setApplyMediapipe, detector, avatar } = useAppState();
     const [_lastUpdateTime, setLastUpdateTime] = useState(0);
 
     const videoInputSelectorProps: VideoInputSelectorProps = {
@@ -71,6 +71,15 @@ const Controller = () => {
         currentValue: avatar ? avatar!.enableLegs : false,
         onChange: (value: boolean) => {
             avatar!.enableLegs = value;
+            setLastUpdateTime(new Date().getTime());
+        },
+    };
+    const handControlProps: CommonSwitchProps = {
+        id: "hand-control-switch",
+        title: "hand-control-switch",
+        currentValue: avatar ? avatar!.enableHands : false,
+        onChange: (value: boolean) => {
+            avatar!.enableHands = value;
             setLastUpdateTime(new Date().getTime());
         },
     };
@@ -163,109 +172,82 @@ const Controller = () => {
         integer: true,
     };
 
-    const perspectiveCameraXSliderProps: CommonSliderProps = {
-        id: "perspective-camera-x-slider",
-        title: "perspective-camera-x-slider",
-        currentValue: threeState.camera?.position.x || 0,
-        max: 3,
-        min: -3,
-        step: 0.1,
+    const armUpdateXSliderProps: CommonSliderProps = {
+        id: "calcmode-slider",
+        title: "arm update x",
+        currentValue: avatar ? avatar.armUpdateX : 0,
+        max: 1,
+        min: 0,
+        step: 1,
         width: "30%",
         onChange: (value: number) => {
-            if (threeState.camera) {
-                threeState.camera.position.set(value, threeState.camera?.position.y, threeState.camera?.position.z);
-                setLastUpdateTime(new Date().getTime());
-            }
+            avatar!.armUpdateX = value;
+            updateDetector();
         },
-        integer: false,
-    };
-    const perspectiveCameraYSliderProps: CommonSliderProps = {
-        id: "perspective-camera-y-slider",
-        title: "perspective-camera-y-slider",
-        currentValue: threeState.camera?.position.y || 0,
-        max: 3,
-        min: -3,
-        step: 0.1,
-        width: "30%",
-        onChange: (value: number) => {
-            if (threeState.camera) {
-                threeState.camera.position.set(threeState.camera.position.x, value, threeState.camera.position.z);
-                setLastUpdateTime(new Date().getTime());
-            }
-        },
-        integer: false,
-    };
-    const perspectiveCameraZSliderProps: CommonSliderProps = {
-        id: "perspective-camera-z-slider",
-        title: "perspective-camera-z-slider",
-        currentValue: threeState.camera?.position.z || 0,
-        max: 3,
-        min: -3,
-        step: 0.1,
-        width: "30%",
-        onChange: (value: number) => {
-            if (threeState.camera) {
-                threeState.camera.position.set(threeState.camera.position.x, threeState.camera.position.y, value);
-                setLastUpdateTime(new Date().getTime());
-            }
-        },
-        integer: false,
+        integer: true,
     };
 
-    const [lookAtVector, setLookAtVector] = useState<THREE.Vector3>(new THREE.Vector3(0, 1.3, 0));
-    const perspectiveCameraLookAtXSliderProps: CommonSliderProps = {
-        id: "perspective-camera-look-at-x-slider",
-        title: "perspective-camera-look-at-x-slider",
-        currentValue: lookAtVector.x,
-        max: 3,
-        min: -3,
-        step: 0.1,
+    const armUpdateYSliderProps: CommonSliderProps = {
+        id: "calcmode-slider",
+        title: "arm update y",
+        currentValue: avatar ? avatar.armUpdateY : 0,
+        max: 1,
+        min: 0,
+        step: 1,
         width: "30%",
         onChange: (value: number) => {
-            if (threeState.camera) {
-                lookAtVector.x = value;
-                threeState.camera.lookAt(lookAtVector);
-                setLookAtVector(lookAtVector);
-                setLastUpdateTime(new Date().getTime());
-            }
+            avatar!.armUpdateY = value;
+            updateDetector();
         },
-        integer: false,
+        integer: true,
     };
-    const perspectiveCameraLookAtYSliderProps: CommonSliderProps = {
-        id: "perspective-camera-look-at-y-slider",
-        title: "perspective-camera-look-at-y-slider",
-        currentValue: lookAtVector.y,
-        max: 3,
-        min: -3,
-        step: 0.1,
+
+    const armUpdateZSliderProps: CommonSliderProps = {
+        id: "calcmode-slider",
+        title: "arm update z",
+        currentValue: avatar ? avatar.armUpdateZ : 0,
+        max: 1,
+        min: 0,
+        step: 1,
         width: "30%",
         onChange: (value: number) => {
-            if (threeState.camera) {
-                lookAtVector.y = value;
-                threeState.camera.lookAt(lookAtVector);
-                setLookAtVector(lookAtVector);
-                setLastUpdateTime(new Date().getTime());
-            }
+            avatar!.armUpdateZ = value;
+            updateDetector();
         },
-        integer: false,
+        integer: true,
     };
-    const perspectiveCameraLookAtZSliderProps: CommonSliderProps = {
-        id: "perspective-camera-look-at-z-slider",
-        title: "perspective-camera-look-at-z-slider",
-        currentValue: lookAtVector.z,
-        max: 3,
-        min: -3,
-        step: 0.1,
-        width: "30%",
-        onChange: (value: number) => {
-            if (threeState.camera) {
-                lookAtVector.z = value;
-                threeState.camera.lookAt(lookAtVector);
-                setLookAtVector(lookAtVector);
-                setLastUpdateTime(new Date().getTime());
-            }
+
+    const [piKey, setPiKey] = useState<string>("PI_2");
+    const armUpdatePiSelectorProps: CommonSelectorProps<number> = {
+        id: "backend-selector",
+        title: "internal resolution",
+        currentValue: piKey,
+        options: {
+            PI_2: Math.PI / 2,
+            MPI_2: (-1 * Math.PI) / 2,
+            PI: Math.PI,
+            MPI: -1 * Math.PI,
+            PI_2_2: Math.PI / 2,
         },
-        integer: false,
+        onChange: (value: number) => {
+            avatar!.armUpdateOffset = value;
+            if (value == Math.PI / 2) {
+                setPiKey("PI_2");
+                console.log("PISETTING1, none", value);
+            } else if (value == Math.PI / 2) {
+                setPiKey("MPI_2");
+                console.log("PISETTING2, none", value);
+            } else if (value == Math.PI) {
+                setPiKey("PI");
+                console.log("PISETTING3, none", value);
+            } else if (value == -1 * Math.PI) {
+                setPiKey("MPI");
+                console.log("PISETTING4, none", value);
+            } else {
+                console.log("PISETTING5, none", value);
+            }
+            updateDetector();
+        },
     };
 
     const creditProps: CreditProps = {
@@ -286,6 +268,7 @@ const Controller = () => {
             <CommonSwitch {...applyMediaPipeProps}></CommonSwitch>
             <CommonSwitch {...useFullbodyCaptureProps}></CommonSwitch>
             <CommonSwitch {...legControlProps}></CommonSwitch>
+            <CommonSwitch {...handControlProps}></CommonSwitch>
 
             <CommonSlider {...movingAverageWindowSliderProps}></CommonSlider>
             <CommonSlider {...affineResizedSliderProps}></CommonSlider>
@@ -293,12 +276,10 @@ const Controller = () => {
             <CommonSlider {...tfliteProcessWidthSliderProps}></CommonSlider>
             <CommonSlider {...calcModeSliderProps}></CommonSlider>
 
-            <CommonSlider {...perspectiveCameraXSliderProps}></CommonSlider>
-            <CommonSlider {...perspectiveCameraYSliderProps}></CommonSlider>
-            <CommonSlider {...perspectiveCameraZSliderProps}></CommonSlider>
-            <CommonSlider {...perspectiveCameraLookAtXSliderProps}></CommonSlider>
-            <CommonSlider {...perspectiveCameraLookAtYSliderProps}></CommonSlider>
-            <CommonSlider {...perspectiveCameraLookAtZSliderProps}></CommonSlider>
+            <CommonSlider {...armUpdateXSliderProps}></CommonSlider>
+            <CommonSlider {...armUpdateYSliderProps}></CommonSlider>
+            <CommonSlider {...armUpdateZSliderProps}></CommonSlider>
+            <CommonSelector {...armUpdatePiSelectorProps}></CommonSelector>
         </div>
     );
 };
@@ -362,8 +343,10 @@ const App = () => {
             //// (1-5) アバター読み込み
             const loader = new GLTFLoader();
 
-            const vrmPath = "./test.vrm";
-            // const vrmPath = "https://cdn.glitch.com/29e07830-2317-4b15-a044-135e73c7f840%2FAshtra.vrm?v=1630342336981";
+            // const vrmPath = "./test.vrm";
+            const vrmPath = "https://cdn.glitch.com/29e07830-2317-4b15-a044-135e73c7f840%2FAshtra.vrm?v=1630342336981";
+            // const vrmPath = "https://yeemachine.github.io/k2021/vrm/Ashtra.vrm";
+
             // const vrmPath = "./kame.vrm";
             // const vrmPath = "./AliciaSolid.vrm";
 
@@ -380,11 +363,11 @@ const App = () => {
             const light = new THREE.DirectionalLight(0xffffff);
             light.position.set(-1, 1, -1).normalize();
             scene.add(light);
-            // @ts-ignore
-            // const controls = new OrbitControls(camera, renderer.domElement);
-            // controls.enableDamping = true;
-            // controls.dampingFactor = 0.2;
-
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.target.x = 0;
+            controls.target.y = 1.3;
+            controls.target.x = 0;
+            controls.update();
             //// (1-7) ステート設定
             threeState.init({
                 scene: scene,
@@ -393,7 +376,7 @@ const App = () => {
                 loader: loader,
                 charactrer: vrm,
                 light: light,
-                // controls: controls,
+                controls: controls,
             });
             // (1-8) avatar 登録
             console.log("three init !!!!!!!!");
@@ -424,6 +407,7 @@ const App = () => {
     }, []);
 
     // (B) Processing
+
     //// (1) Main
     useEffect(() => {
         console.log("Renderer Initialized");
@@ -474,7 +458,8 @@ const App = () => {
                     // drawPoses(poses, posesMP);
 
                     if (applyMediapipe) {
-                        avatar.updatePose(faceRigMP, poseRigMP, leftHandRigMP, rightHandRigMP);
+                        // avatar.updatePose(faceRigMP, poseRigMP, leftHandRigMP, rightHandRigMP);
+                        avatar.updatePoseWithRaw(faceRigMP, poseRigMP, leftHandRigMP, rightHandRigMP, posesMP);
                         if (posesMP) {
                             grid.updateLandmarks(posesMP.singlePersonKeypoints3DMovingAverage, POSE_CONNECTIONS, [
                                 { list: Object.values(POSE_LANDMARKS_LEFT), color: "LEFT" },
@@ -482,8 +467,8 @@ const App = () => {
                             ]);
                         }
                     } else {
-                        avatar.updatePose(faceRig, poseRig, leftHandRig, rightHandRig);
-                        // avatar.updatePoseWithRaw(faceRig, poseRig, leftHandRig, rightHandRig, poses);
+                        // avatar.updatePose(faceRig, poseRig, leftHandRig, rightHandRig);
+                        avatar.updatePoseWithRaw(faceRig, poseRig, leftHandRig, rightHandRig, poses);
                         if (poses) {
                             grid.updateLandmarks(poses.singlePersonKeypoints3DMovingAverage, POSE_CONNECTIONS, [
                                 { list: Object.values(POSE_LANDMARKS_LEFT), color: "LEFT" },
@@ -496,6 +481,13 @@ const App = () => {
                 console.log(error);
             }
             // threeState.controls.update();
+            // console.log(threeState.charactrer?.springBoneManager?.springBoneGroupList);
+            // threeState.charactrer?.springBoneManager?.springBoneGroupList.forEach((element) => {
+            //     element.forEach((node) => {
+            //         node.update(0.01);
+            //     });
+            // });
+            threeState.charactrer?.springBoneManager?.lateUpdate(0.1);
 
             threeState.renderer!.render(threeState.scene!, threeState.camera!);
             if (GlobalLoopID === LOOP_ID) {

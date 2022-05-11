@@ -1,7 +1,7 @@
 
-import * as faces from "@dannadori/face-landmark-detection-worker-js";
-import * as hands from "@dannadori/hand-pose-detection-worker-js";
-import * as poses from "@dannadori/blaze-pose-worker-js"
+import * as faces from "@dannadori/face-landmark-detection-worker-js/dist/face-landmark-detection-workershort_with_attention";
+import * as hands from "@dannadori/hand-pose-detection-worker-js/dist/hand-pose-detection-workerlite";
+import * as poses from "@dannadori/blaze-pose-worker-js/dist/blaze-pose-workerlite"
 import * as kalido from "./kalido"
 import { MotionDetectorConfig, MotionDetectorParams } from "./MotionDetectorConst";
 export { poses }
@@ -513,13 +513,18 @@ export class MotionDetector {
             console.log("predictPoses:", error)
         }
 
-        // console.log("POSE:::", this.latestPoses)
+        // console.log("POSE::L:", this.latestPoses?.singlePersonKeypoints3DMovingAverage![15].y, this.latestPoses?.singlePersonKeypoints3DMovingAverage![15].score, this.latestPoses?.singlePersonKeypointsMovingAverage![15].y)
+        // console.log("POSE::R:", this.latestPoses?.singlePersonKeypoints3DMovingAverage![16].y, this.latestPoses?.singlePersonKeypoints3DMovingAverage![16].score, this.latestPoses?.singlePersonKeypointsMovingAverage![16].y)
+
 
         if (this.latestPoses) {
             this.latestPoses.singlePersonKeypointsMovingAverage!.forEach((x) => {
                 (x.x *= snap.width), (x.y *= snap.height);
                 (x.z! *= snap.width)
             });
+            // this.latestPoses.singlePersonKeypoints3DMovingAverage!.forEach((x) => {
+            //     (x.x /= 2), (x.y /= 2);
+            // });
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
             const poseRig = kalido.Pose.solve(this.latestPoses.singlePersonKeypoints3DMovingAverage, this.latestPoses.singlePersonKeypointsMovingAverage, {
