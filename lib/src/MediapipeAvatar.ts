@@ -378,14 +378,31 @@ export class MediapipeAvator {
 
 
         if (poses && poses.singlePersonKeypoints3DMovingAverage) {
-            // const leftArmPointTFList = getArmPointTFList(poses.singlePersonKeypoints3DMovingAverage, 11, 13, 15)
+            // (1) TFの結果を用いて、方から肘、手首までのベクトルを算出
+            // 左右のインデックスはMediapipeのドキュメントの名称をベースに設定。ここではフリップは考慮しない。
+            // https://google.github.io/mediapipe/solutions/pose.html
+            //// (1-1) 右腕
             const rightArmPointTFList = getArmPointTFList(poses.singlePersonKeypoints3DMovingAverage, 12, 14, 16)
+            // const rightElbowFromShoulderVecTF = getTargetVectorFromShoulderTF(rightArmPointTFList[0], rightArmPointTFList[1])
+            // const rightWristFromShoulderVecTF = getTargetVectorFromShoulderTF(rightArmPointTFList[0], rightArmPointTFList[1])
+
+            //// (1-2) 左腕
+            // const leftArmPointTFList = getArmPointTFList(poses.singlePersonKeypoints3DMovingAverage, 11, 13, 15)
+            // const leftElbowFromShoulderVecTF = getTargetVectorFromShoulderTF(leftArmPointTFList[0], leftArmPointTFList[1])
+            // const leftWristFromShoulderVecTF = getTargetVectorFromShoulderTF(leftArmPointTFList[0], leftArmPointTFList[2])
+
+            // (2) VRM処理
+            //// (2-1) 左腕
+            ////// (2-1-1) 上腕、下腕、手首のボーンを取得
+            const leftUpperArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftUpperArm)!
+            const leftLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftLowerArm)!
+            const leftHand = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftHand)!
+
+
 
             for (let i = 0; i < 3; i++) {
                 const elbowTargetPosition = getTargetPosition(this.avatar, "Left", rightArmPointTFList[0], rightArmPointTFList[1])
                 if (elbowTargetPosition) {
-                    const leftLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftLowerArm)!
-                    const leftUpperArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftUpperArm)!
                     // const min = new THREE.Vector3(-Math.PI / 2, -Math.PI, - Math.PI)
                     // const max = new THREE.Vector3(Math.PI / 2, Math.PI, Math.PI)
                     // const order = "ZXY"
@@ -397,7 +414,6 @@ export class MediapipeAvator {
 
                 const handTargetPosition = getTargetPosition(this.avatar, "Left", rightArmPointTFList[0], rightArmPointTFList[2])
                 if (handTargetPosition) {
-                    const leftHand = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftHand)!
                     const leftLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftLowerArm)!
                     // const min = new THREE.Vector3(0, -Math.PI, 0)
                     // const max = new THREE.Vector3(0, -(0.1 / 180) * Math.PI, 0)
