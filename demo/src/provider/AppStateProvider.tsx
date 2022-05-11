@@ -16,7 +16,8 @@ type AppStateValue = {
 
     applyMediapipe: boolean;
     setApplyMediapipe: (val: boolean) => void;
-
+    useCustomArmRig: boolean;
+    setUseCustomArmRig: (val: boolean) => void;
     threeState: UseThreeStateAndMethods;
     setAvatarVRM: (vrm: VRM, scene: THREE.Scene) => void;
     avatar: MediapipeAvator | undefined;
@@ -40,6 +41,7 @@ export const AppStateProvider = ({ children }: Props) => {
     const [inputSourceType, setInputSourceType] = useState<string | null>(null);
     const [inputSource, _setInputSource] = useState<MediaStream | string | null>(null);
     const [applyMediapipe, setApplyMediapipe] = useState(false);
+    const [useCustomArmRig, setUseCustomArmRig] = useState(false);
 
     const avatarRef = useRef<MediapipeAvator>();
     const [avatar, setAvatar] = useState<MediapipeAvator | undefined>(avatarRef.current);
@@ -103,6 +105,9 @@ export const AppStateProvider = ({ children }: Props) => {
         setInputSource,
         applyMediapipe,
         setApplyMediapipe,
+        useCustomArmRig,
+        setUseCustomArmRig,
+
         threeState,
         setAvatarVRM,
         avatar,

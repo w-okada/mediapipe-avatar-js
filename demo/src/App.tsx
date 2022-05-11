@@ -3,7 +3,7 @@ import "./App.css";
 import { useAppState } from "./provider/AppStateProvider";
 
 import { DataTypesOfDataURL, getDataTypeOfDataURL } from "./utils/urlReader";
-import { CommonSelector, CommonSelectorProps, CommonSlider, CommonSliderProps, CommonSwitch, CommonSwitchProps, Credit, CreditProps, VideoInputSelector, VideoInputSelectorProps } from "@dannadori/demo-base";
+import { CommonSlider, CommonSliderProps, CommonSwitch, CommonSwitchProps, Credit, CreditProps, VideoInputSelector, VideoInputSelectorProps } from "@dannadori/demo-base";
 import * as THREE from "three";
 
 import { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
@@ -16,7 +16,7 @@ const LandmarkGrid = window.LandmarkGrid;
 console.log("LANDMARK_GRID", LandmarkGrid);
 
 const Controller = () => {
-    const { inputSourceType, setInputSourceType, setInputSource, /*threeState,*/ updateDetector, applyMediapipe, setApplyMediapipe, detector, avatar } = useAppState();
+    const { inputSourceType, setInputSourceType, setInputSource, updateDetector, applyMediapipe, setApplyMediapipe, detector, avatar, useCustomArmRig, setUseCustomArmRig } = useAppState();
     const [_lastUpdateTime, setLastUpdateTime] = useState(0);
 
     const videoInputSelectorProps: VideoInputSelectorProps = {
@@ -172,81 +172,22 @@ const Controller = () => {
         integer: true,
     };
 
-    const armUpdateXSliderProps: CommonSliderProps = {
-        id: "calcmode-slider",
-        title: "arm update x",
-        currentValue: avatar ? avatar.armUpdateX : 0,
-        max: 1,
-        min: 0,
-        step: 1,
-        width: "30%",
-        onChange: (value: number) => {
-            avatar!.armUpdateX = value;
+    const targetVisibleSwitchProps: CommonSwitchProps = {
+        id: "target-visible-switch",
+        title: "target-visible-switch",
+        currentValue: avatar ? avatar.isTargetVisible : false,
+        onChange: (value: boolean) => {
+            avatar!.isTargetVisible = value;
             updateDetector();
         },
-        integer: true,
     };
 
-    const armUpdateYSliderProps: CommonSliderProps = {
-        id: "calcmode-slider",
-        title: "arm update y",
-        currentValue: avatar ? avatar.armUpdateY : 0,
-        max: 1,
-        min: 0,
-        step: 1,
-        width: "30%",
-        onChange: (value: number) => {
-            avatar!.armUpdateY = value;
-            updateDetector();
-        },
-        integer: true,
-    };
-
-    const armUpdateZSliderProps: CommonSliderProps = {
-        id: "calcmode-slider",
-        title: "arm update z",
-        currentValue: avatar ? avatar.armUpdateZ : 0,
-        max: 1,
-        min: 0,
-        step: 1,
-        width: "30%",
-        onChange: (value: number) => {
-            avatar!.armUpdateZ = value;
-            updateDetector();
-        },
-        integer: true,
-    };
-
-    const [piKey, setPiKey] = useState<string>("PI_2");
-    const armUpdatePiSelectorProps: CommonSelectorProps<number> = {
-        id: "backend-selector",
-        title: "internal resolution",
-        currentValue: piKey,
-        options: {
-            PI_2: Math.PI / 2,
-            MPI_2: (-1 * Math.PI) / 2,
-            PI: Math.PI,
-            MPI: -1 * Math.PI,
-            PI_2_2: Math.PI / 2,
-        },
-        onChange: (value: number) => {
-            avatar!.armUpdateOffset = value;
-            if (value == Math.PI / 2) {
-                setPiKey("PI_2");
-                console.log("PISETTING1, none", value);
-            } else if (value == Math.PI / 2) {
-                setPiKey("MPI_2");
-                console.log("PISETTING2, none", value);
-            } else if (value == Math.PI) {
-                setPiKey("PI");
-                console.log("PISETTING3, none", value);
-            } else if (value == -1 * Math.PI) {
-                setPiKey("MPI");
-                console.log("PISETTING4, none", value);
-            } else {
-                console.log("PISETTING5, none", value);
-            }
-            updateDetector();
+    const useCustomArmRigSwitchProps: CommonSwitchProps = {
+        id: "use-custom-arm-rig-switch",
+        title: "use-custom-arm-rig-switch",
+        currentValue: useCustomArmRig,
+        onChange: (value: boolean) => {
+            setUseCustomArmRig(value);
         },
     };
 
@@ -275,17 +216,14 @@ const Controller = () => {
             <CommonSlider {...tfliteProcessHeightSliderProps}></CommonSlider>
             <CommonSlider {...tfliteProcessWidthSliderProps}></CommonSlider>
             <CommonSlider {...calcModeSliderProps}></CommonSlider>
-
-            <CommonSlider {...armUpdateXSliderProps}></CommonSlider>
-            <CommonSlider {...armUpdateYSliderProps}></CommonSlider>
-            <CommonSlider {...armUpdateZSliderProps}></CommonSlider>
-            <CommonSelector {...armUpdatePiSelectorProps}></CommonSelector>
+            <CommonSwitch {...targetVisibleSwitchProps}></CommonSwitch>
+            <CommonSwitch {...useCustomArmRigSwitchProps}></CommonSwitch>
         </div>
     );
 };
 
 const App = () => {
-    const { inputSource, threeState, applyMediapipe, setAvatarVRM, detector, avatar } = useAppState();
+    const { inputSource, threeState, applyMediapipe, setAvatarVRM, detector, avatar, useCustomArmRig } = useAppState();
 
     const [grid, setGrid] = useState<any>();
     // window.renderer = new THREE.WebGLRenderer();
@@ -458,8 +396,11 @@ const App = () => {
                     // drawPoses(poses, posesMP);
 
                     if (applyMediapipe) {
-                        // avatar.updatePose(faceRigMP, poseRigMP, leftHandRigMP, rightHandRigMP);
-                        avatar.updatePoseWithRaw(faceRigMP, poseRigMP, leftHandRigMP, rightHandRigMP, posesMP);
+                        if (useCustomArmRig) {
+                            avatar.updatePoseWithRaw(faceRigMP, poseRigMP, leftHandRigMP, rightHandRigMP, posesMP);
+                        } else {
+                            avatar.updatePose(faceRigMP, poseRigMP, leftHandRigMP, rightHandRigMP);
+                        }
                         if (posesMP) {
                             grid.updateLandmarks(posesMP.singlePersonKeypoints3DMovingAverage, POSE_CONNECTIONS, [
                                 { list: Object.values(POSE_LANDMARKS_LEFT), color: "LEFT" },
@@ -467,8 +408,11 @@ const App = () => {
                             ]);
                         }
                     } else {
-                        // avatar.updatePose(faceRig, poseRig, leftHandRig, rightHandRig);
-                        avatar.updatePoseWithRaw(faceRig, poseRig, leftHandRig, rightHandRig, poses);
+                        if (useCustomArmRig) {
+                            avatar.updatePoseWithRaw(faceRig, poseRig, leftHandRig, rightHandRig, poses);
+                        } else {
+                            avatar.updatePose(faceRig, poseRig, leftHandRig, rightHandRig);
+                        }
                         if (poses) {
                             grid.updateLandmarks(poses.singlePersonKeypoints3DMovingAverage, POSE_CONNECTIONS, [
                                 { list: Object.values(POSE_LANDMARKS_LEFT), color: "LEFT" },
@@ -506,7 +450,7 @@ const App = () => {
             console.log("CANCEL", renderRequestId);
             cancelAnimationFrame(renderRequestId);
         };
-    }, [inputSourceElement, applyMediapipe, grid, detector, avatar]);
+    }, [inputSourceElement, applyMediapipe, grid, detector, avatar, useCustomArmRig]);
 
     return (
         <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", objectFit: "contain", alignItems: "flex-start" }}>
