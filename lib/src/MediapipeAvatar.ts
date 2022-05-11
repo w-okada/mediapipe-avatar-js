@@ -398,38 +398,19 @@ export class MediapipeAvator {
             const leftLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftLowerArm)!
             const leftHand = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftHand)!
 
+            ////// (2-1-2) 上腕の処理
+            const elbowTargetPosition = getTargetPosition(this.avatar, "Left", rightArmPointTFList[0], rightArmPointTFList[1])
+            if (elbowTargetPosition) {
+                moveArm(leftUpperArm, leftLowerArm, elbowTargetPosition)
+                this.leftUpperArmTarget.position.set(elbowTargetPosition.x, elbowTargetPosition.y, elbowTargetPosition.z);
+            }
 
-
-            for (let i = 0; i < 3; i++) {
-                const elbowTargetPosition = getTargetPosition(this.avatar, "Left", rightArmPointTFList[0], rightArmPointTFList[1])
-                if (elbowTargetPosition) {
-                    // const min = new THREE.Vector3(-Math.PI / 2, -Math.PI, - Math.PI)
-                    // const max = new THREE.Vector3(Math.PI / 2, Math.PI, Math.PI)
-                    // const order = "ZXY"
-                    // this.leftUpperArmTarget.position.set(elbowTargetPosition.x, elbowTargetPosition.y, elbowTargetPosition.z)
-                    // moveArm(leftUpperArm, leftLowerArm, elbowTargetPosition, min, max, order)
-                    moveArm(leftUpperArm, leftLowerArm, elbowTargetPosition)
-                    this.leftUpperArmTarget.position.set(elbowTargetPosition.x, elbowTargetPosition.y, elbowTargetPosition.z);
-                }
-
-                const handTargetPosition = getTargetPosition(this.avatar, "Left", rightArmPointTFList[0], rightArmPointTFList[2])
-                if (handTargetPosition) {
-                    const leftLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftLowerArm)!
-                    // const min = new THREE.Vector3(0, -Math.PI, 0)
-                    // const max = new THREE.Vector3(0, -(0.1 / 180) * Math.PI, 0)
-                    // const order = "YZX"
-                    // this.leftLowerArmTarget.position.set(handTargetPosition.x, handTargetPosition.y, handTargetPosition.z)
-                    // const elbowPosition = new THREE.Vector3()
-                    // leftLowerArm.getWorldPosition(elbowPosition)
-                    // moveArm(leftLowerArm, leftHand, handTargetPosition, min, max, order)
-                    moveArm(leftLowerArm, leftHand, handTargetPosition)
-                    this.leftLowerArmTarget.position.set(handTargetPosition.x, handTargetPosition.y, handTargetPosition.z);
-                }
-
-
-
-
-
+            ////// (2-1-3) 下腕の処理
+            const handTargetPosition = getTargetPosition(this.avatar, "Left", rightArmPointTFList[0], rightArmPointTFList[2])
+            if (handTargetPosition) {
+                const leftLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftLowerArm)!
+                moveArm(leftLowerArm, leftHand, handTargetPosition)
+                this.leftLowerArmTarget.position.set(handTargetPosition.x, handTargetPosition.y, handTargetPosition.z);
             }
 
             // // const leftShoulderTF = new THREE.Vector3(poses.singlePersonKeypoints3DMovingAverage![11].x, poses.singlePersonKeypoints3DMovingAverage![11].y, poses.singlePersonKeypoints3DMovingAverage![11].z);
