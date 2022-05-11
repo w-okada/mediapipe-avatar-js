@@ -522,9 +522,9 @@ export class MotionDetector {
                 (x.x *= snap.width), (x.y *= snap.height);
                 (x.z! *= snap.width)
             });
-            // this.latestPoses.singlePersonKeypoints3DMovingAverage!.forEach((x) => {
-            //     (x.x /= 2), (x.y /= 2);
-            // });
+            this.latestPoses.singlePersonKeypoints3DMovingAverage!.forEach((x) => {
+                (x.x /= 2), (x.y /= 2);
+            });
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
             const poseRig = kalido.Pose.solve(this.latestPoses.singlePersonKeypoints3DMovingAverage, this.latestPoses.singlePersonKeypointsMovingAverage, {

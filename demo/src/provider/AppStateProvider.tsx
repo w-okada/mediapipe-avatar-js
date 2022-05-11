@@ -41,7 +41,7 @@ export const AppStateProvider = ({ children }: Props) => {
     const [inputSourceType, setInputSourceType] = useState<string | null>(null);
     const [inputSource, _setInputSource] = useState<MediaStream | string | null>(null);
     const [applyMediapipe, setApplyMediapipe] = useState(false);
-    const [useCustomArmRig, setUseCustomArmRig] = useState(false);
+    const [useCustomArmRig, setUseCustomArmRig] = useState(true);
 
     const avatarRef = useRef<MediapipeAvator>();
     const [avatar, setAvatar] = useState<MediapipeAvator | undefined>(avatarRef.current);
@@ -107,7 +107,6 @@ export const AppStateProvider = ({ children }: Props) => {
         setApplyMediapipe,
         useCustomArmRig,
         setUseCustomArmRig,
-
         threeState,
         setAvatarVRM,
         avatar,

@@ -12,6 +12,7 @@ export type AvatarOffset = {
 export class MediapipeAvator {
 
     avatar: VRM;
+    scene: THREE.Scene
     offset: AvatarOffset
     enableFace = true
     enableUpperBody = true
@@ -24,7 +25,7 @@ export class MediapipeAvator {
     LEFT_UPPER_ARM_TARGET_COLOR = "rgba(0, 255, 0, 0.5)"
     RIGHT_LOWER_ARM_TARGET_COLOR = "rgba(255, 0, 255, 0.5)"
     RIGHT_UPPER_ARM_TARGET_COLOR = "rgba(0, 255, 255, 0.5)"
-    INVISIBLE = "rgba(0, 0, 0, 0.0)"
+    INVISIBLE = "rgba(0, 0, 0, 0)"
 
     leftLowerArmTarget = new THREE.Mesh(new THREE.SphereGeometry(0.05), new THREE.MeshBasicMaterial({ color: this.LEFT_LOWER_ARM_TARGET_COLOR }));
     leftUpperArmTarget = new THREE.Mesh(new THREE.SphereGeometry(0.05), new THREE.MeshBasicMaterial({ color: this.LEFT_UPPER_ARM_TARGET_COLOR }));
@@ -33,6 +34,7 @@ export class MediapipeAvator {
     rightUpperArmTarget = new THREE.Mesh(new THREE.SphereGeometry(0.05), new THREE.MeshBasicMaterial({ color: this.RIGHT_UPPER_ARM_TARGET_COLOR }));
     constructor(avatar: VRM, scene: THREE.Scene, offset: AvatarOffset = { x: 0, y: 0, z: 0 }) {
         this.avatar = avatar
+        this.scene = scene
         this.offset = offset
 
         scene.add(this.leftLowerArmTarget)
@@ -50,23 +52,20 @@ export class MediapipeAvator {
     get isTargetVisible(): boolean { return this._isTargetVisible }
     set isTargetVisible(val: boolean) {
         if (val) {
-            this.leftLowerArmTarget.material.color.setStyle(this.LEFT_LOWER_ARM_TARGET_COLOR)
-            this.leftUpperArmTarget.material.color.setStyle(this.LEFT_UPPER_ARM_TARGET_COLOR)
-            this.rightLowerArmTarget.material.color.setStyle(this.RIGHT_LOWER_ARM_TARGET_COLOR)
-            this.rightUpperArmTarget.material.color.setStyle(this.RIGHT_UPPER_ARM_TARGET_COLOR)
-
+            this.scene.add(this.leftUpperArmTarget)
+            this.scene.add(this.leftLowerArmTarget)
+            this.scene.add(this.rightUpperArmTarget)
+            this.scene.add(this.rightLowerArmTarget)
         } else {
-            this.leftLowerArmTarget.material.color.setStyle(this.INVISIBLE)
-            this.leftUpperArmTarget.material.color.setStyle(this.INVISIBLE)
-            this.rightLowerArmTarget.material.color.setStyle(this.INVISIBLE)
-            this.rightUpperArmTarget.material.color.setStyle(this.INVISIBLE)
-
-
+            this.scene.remove(this.leftUpperArmTarget)
+            this.scene.remove(this.leftLowerArmTarget)
+            this.scene.remove(this.rightUpperArmTarget)
+            this.scene.remove(this.rightLowerArmTarget)
         }
         this._isTargetVisible = val
     }
 
-
+    useSlerp: boolean = false
 
     // Animate Rotation Helper function
     rigRotation = (name: string, rotation = { x: 0, y: 0, z: 0 }, dampener = 1, lerpAmount = 0.3) => {
@@ -268,17 +267,16 @@ export class MediapipeAvator {
 
     getTargetVectorFromShoulderTF = (shoulderTF: THREE.Vector4, targetTF: THREE.Vector4) => {
         const vectorToTarget = targetTF.clone().sub(shoulderTF);
-        return new THREE.Vector3(vectorToTarget.x / 2, -1 * vectorToTarget.y / 2, 1 * vectorToTarget.z) // x, yのスケールがおかしいので調整
+        return new THREE.Vector3(vectorToTarget.x, -1 * vectorToTarget.y, 1 * vectorToTarget.z) // x, yのスケールがおかしいので調整
+        // return new THREE.Vector3(vectorToTarget.x / 2, -1 * vectorToTarget.y / 2, 1 * vectorToTarget.z) // x, yのスケールがおかしいので調整
     }
 
     getTargetPosition = (avatar: VRM, side: "Left" | "Right", vector: THREE.Vector3) => {
         let VRMShoulder
         if (side == "Left") {
             VRMShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftShoulder)
-            // VRMShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftUpperArm)
         } else {
             VRMShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightShoulder)
-            // VRMShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightUpperArm)
         }
         if (!VRMShoulder) {
             return null
@@ -293,7 +291,31 @@ export class MediapipeAvator {
         return targetWorldPosition
     }
 
-    moveArm = (joint: GLTFNode, effecter: GLTFNode, target: THREE.Vector3) => {
+
+    getTargetPosition2 = (avatar: VRM, _side: "Left" | "Right", vector: THREE.Vector3) => {
+
+        const VRMLeftShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftShoulder)
+        const VRMRightShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightShoulder)
+
+        if (!VRMLeftShoulder || !VRMRightShoulder) {
+            return null
+        }
+
+        const VRMLeftShoulderWorldPosition = new THREE.Vector3();
+        VRMLeftShoulder.getWorldPosition(VRMLeftShoulderWorldPosition);
+        const VRMRightShoulderWorldPosition = new THREE.Vector3();
+        VRMRightShoulder.getWorldPosition(VRMRightShoulderWorldPosition);
+        const VRMCenterOfTheShoulders = VRMLeftShoulderWorldPosition.add(VRMRightShoulderWorldPosition).divideScalar(2)
+
+        const VRMCenterOfTheShoulderLocalPosition = VRMLeftShoulder.worldToLocal(VRMCenterOfTheShoulders.clone());
+
+        const targetLocalPosition = VRMCenterOfTheShoulderLocalPosition.clone().add(vector);
+        const targetWorldPosition = VRMLeftShoulder.localToWorld(targetLocalPosition.clone());
+        return targetWorldPosition
+    }
+
+
+    moveArm = (joint: GLTFNode, effecter: GLTFNode, target: THREE.Vector3, slerp: boolean) => {
         const _goalPosition = new THREE.Vector3(target.x, target.y, target.z);
         // 注目関節のワールド座標・姿勢等を取得する
         const _jointPosition = new THREE.Vector3();
@@ -341,14 +363,143 @@ export class MediapipeAvator {
         // 回転
         const _quarternion = new THREE.Quaternion();
         _quarternion.setFromAxisAngle(_axis, deltaAngle);
-        joint.quaternion.multiply(_quarternion);
-        // joint.quaternion.slerp(_quarternion, 0.3);
 
-        joint.updateMatrixWorld(true);
+        const result = joint.clone();
+        result.quaternion.multiply(_quarternion)
+
+        if (slerp) {
+            joint.quaternion.slerp(_quarternion, 0.3);
+        } else {
+            joint.quaternion.multiply(_quarternion);
+        }
+        return result
+    }
+
+    updatePoseWithRawInternal = (singlePersonKeypoints3DMovingAverage: Keypoint[]) => {
+        // (1) TF処理
+        // TFの結果を用いて、方から肘、手首までのベクトルを算出
+        // 左右のインデックスはMediapipeのドキュメントの名称をベースに設定。ここではフリップは考慮しない。
+        // https://google.github.io/mediapipe/solutions/pose.html
+        //// (1-1) 右腕
+        const rightArmPointTFList = this.getArmPointTFList(singlePersonKeypoints3DMovingAverage, 12, 14, 16)
+        const rightElbowFromShoulderVecTF = this.getTargetVectorFromShoulderTF(rightArmPointTFList[0], rightArmPointTFList[1])
+        const rightWristFromShoulderVecTF = this.getTargetVectorFromShoulderTF(rightArmPointTFList[0], rightArmPointTFList[2])
+
+        //// (1-2) 左腕
+        const leftArmPointTFList = this.getArmPointTFList(singlePersonKeypoints3DMovingAverage, 11, 13, 15)
+        const leftElbowFromShoulderVecTF = this.getTargetVectorFromShoulderTF(leftArmPointTFList[0], leftArmPointTFList[1])
+        const leftWristFromShoulderVecTF = this.getTargetVectorFromShoulderTF(leftArmPointTFList[0], leftArmPointTFList[2])
+
+        // (2) VRM処理
+        //// (2-1) 左腕
+        ////// (2-1-1) 上腕、下腕、手首のボーンを取得
+        const leftUpperArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftUpperArm)!
+        const leftLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftLowerArm)!
+        const leftHand = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftHand)!
+
+        ////// (2-1-2) 上腕の処理 (右腕のTFを使う。)
+        let elbowTargetPosition = this.getTargetPosition(this.avatar, "Left", rightElbowFromShoulderVecTF)
+        if (elbowTargetPosition) {
+            this.moveArm(leftUpperArm, leftLowerArm, elbowTargetPosition, this.useSlerp)
+            this.leftUpperArmTarget.position.set(elbowTargetPosition.x, elbowTargetPosition.y, elbowTargetPosition.z);
+        }
+
+        ////// (2-1-3) 下腕の処理
+        let handTargetPosition = this.getTargetPosition(this.avatar, "Left", rightWristFromShoulderVecTF)
+        if (handTargetPosition) {
+            this.moveArm(leftLowerArm, leftHand, handTargetPosition, this.useSlerp)
+            this.leftLowerArmTarget.position.set(handTargetPosition.x, handTargetPosition.y, handTargetPosition.z);
+        }
+
+        //// (2-2) 右腕
+        ////// (2-2-1) 上腕、下腕、手首のボーンを取得
+        const rightUpperArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightUpperArm)!
+        const rightLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightLowerArm)!
+        const rightHand = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightHand)!
+
+        ////// (2-1-2) 上腕の処理 (左腕のTFを使う。)
+        elbowTargetPosition = this.getTargetPosition(this.avatar, "Right", leftElbowFromShoulderVecTF)
+        if (elbowTargetPosition) {
+            this.moveArm(rightUpperArm, rightLowerArm, elbowTargetPosition, this.useSlerp)
+            this.rightUpperArmTarget.position.set(elbowTargetPosition.x, elbowTargetPosition.y, elbowTargetPosition.z);
+        }
+
+        ////// (2-1-3) 下腕の処理
+        handTargetPosition = this.getTargetPosition(this.avatar, "Right", leftWristFromShoulderVecTF)
+        if (handTargetPosition) {
+            this.moveArm(rightLowerArm, rightHand, handTargetPosition, this.useSlerp)
+            this.rightLowerArmTarget.position.set(handTargetPosition.x, handTargetPosition.y, handTargetPosition.z);
+        }
 
     }
 
 
+    updatePoseWithRawInternal2 = (singlePersonKeypoints3DMovingAverage: Keypoint[]) => {
+        // (1) TF処理
+        // TFの結果を用いて、方から肘、手首までのベクトルを算出
+        // 左右のインデックスはMediapipeのドキュメントの名称をベースに設定。ここではフリップは考慮しない。
+        // https://google.github.io/mediapipe/solutions/pose.html
+        //// (1-1) 型の間の中点
+        const rightArmPointTFList = this.getArmPointTFList(singlePersonKeypoints3DMovingAverage, 12, 14, 16)
+        const leftArmPointTFList = this.getArmPointTFList(singlePersonKeypoints3DMovingAverage, 11, 13, 15)
+        const centerOftheShoulder = rightArmPointTFList[0].add(leftArmPointTFList[0]).divideScalar(2)
+        //// (1-2) 右腕
+        const rightElbowFromShoulderVecTF = this.getTargetVectorFromShoulderTF(centerOftheShoulder, rightArmPointTFList[1])
+        const rightWristFromShoulderVecTF = this.getTargetVectorFromShoulderTF(centerOftheShoulder, rightArmPointTFList[2])
+
+        //// (1-3) 左腕
+        const leftElbowFromShoulderVecTF = this.getTargetVectorFromShoulderTF(centerOftheShoulder, leftArmPointTFList[1])
+        const leftWristFromShoulderVecTF = this.getTargetVectorFromShoulderTF(centerOftheShoulder, leftArmPointTFList[2])
+
+        // (2) VRM処理
+        //// (2-1) 左腕
+        ////// (2-1-1) 上腕、下腕、手首のボーンを取得
+        const leftUpperArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftUpperArm)!
+        const leftLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftLowerArm)!
+        const leftHand = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftHand)!
+
+        ////// (2-1-2) 上腕の処理 (右腕のTFを使う。)
+        let elbowTargetPosition = this.getTargetPosition2(this.avatar, "Left", rightElbowFromShoulderVecTF)
+        if (elbowTargetPosition) {
+            this.moveArm(leftUpperArm, leftLowerArm, elbowTargetPosition, this.useSlerp)
+            this.leftUpperArmTarget.position.set(elbowTargetPosition.x, elbowTargetPosition.y, elbowTargetPosition.z);
+        }
+
+        ////// (2-1-3) 下腕の処理
+        let handTargetPosition = this.getTargetPosition2(this.avatar, "Left", rightWristFromShoulderVecTF)
+        if (handTargetPosition) {
+            this.moveArm(leftLowerArm, leftHand, handTargetPosition, this.useSlerp)
+            this.leftLowerArmTarget.position.set(handTargetPosition.x, handTargetPosition.y, handTargetPosition.z);
+        }
+
+        //// (2-2) 右腕
+        ////// (2-2-1) 上腕、下腕、手首のボーンを取得
+        const rightUpperArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightUpperArm)!
+        const rightLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightLowerArm)!
+        const rightHand = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightHand)!
+        ////// (2-1-2) 上腕の処理 (左腕のTFを使う。)
+        elbowTargetPosition = this.getTargetPosition(this.avatar, "Right", leftElbowFromShoulderVecTF)
+        // let result
+        if (elbowTargetPosition) {
+            // result = this.moveArm(rightUpperArm, rightLowerArm, elbowTargetPosition, true)
+            this.moveArm(rightUpperArm, rightLowerArm, elbowTargetPosition, this.useSlerp)
+            this.rightUpperArmTarget.position.set(elbowTargetPosition.x, elbowTargetPosition.y, elbowTargetPosition.z);
+        }
+
+        ////// (2-1-3) 下腕の処理
+        handTargetPosition = this.getTargetPosition(this.avatar, "Right", leftWristFromShoulderVecTF)
+        if (handTargetPosition) {
+            // const futureLowerArm = result.children.filter(x => { return x.type == "Bone" })
+            // const futureHand = futureLowerArm[0].children.filter(x => { return x.type == "Bone" })
+            // console.log("FUTER", futureLowerArm, futureHand, result.children)
+            this.moveArm(rightLowerArm, rightHand, handTargetPosition, this.useSlerp)
+            // this.moveArm(futureLowerArm[0], futureHand[0], handTargetPosition, true)
+            this.rightLowerArmTarget.position.set(handTargetPosition.x, handTargetPosition.y, handTargetPosition.z);
+        }
+
+
+
+    }
     updatePoseWithRaw = (faceRig: TFace | null, poseRig: TPose | null, leftHandRig: THand<Side> | null, rightHandRig: THand<Side> | null, poses: PosePredictionEx | null) => {
         if (this.enableFace && faceRig) {
             this.rigFace(faceRig);
@@ -360,61 +511,7 @@ export class MediapipeAvator {
         console.log(poses)
 
         if (poses && poses.singlePersonKeypoints3DMovingAverage) {
-            // (1) TF処理
-            // TFの結果を用いて、方から肘、手首までのベクトルを算出
-            // 左右のインデックスはMediapipeのドキュメントの名称をベースに設定。ここではフリップは考慮しない。
-            // https://google.github.io/mediapipe/solutions/pose.html
-            //// (1-1) 右腕
-            const rightArmPointTFList = this.getArmPointTFList(poses.singlePersonKeypoints3DMovingAverage, 12, 14, 16)
-            const rightElbowFromShoulderVecTF = this.getTargetVectorFromShoulderTF(rightArmPointTFList[0], rightArmPointTFList[1])
-            const rightWristFromShoulderVecTF = this.getTargetVectorFromShoulderTF(rightArmPointTFList[0], rightArmPointTFList[2])
-
-            //// (1-2) 左腕
-            const leftArmPointTFList = this.getArmPointTFList(poses.singlePersonKeypoints3DMovingAverage, 11, 13, 15)
-            const leftElbowFromShoulderVecTF = this.getTargetVectorFromShoulderTF(leftArmPointTFList[0], leftArmPointTFList[1])
-            const leftWristFromShoulderVecTF = this.getTargetVectorFromShoulderTF(leftArmPointTFList[0], leftArmPointTFList[2])
-
-            // (2) VRM処理
-            //// (2-1) 左腕
-            ////// (2-1-1) 上腕、下腕、手首のボーンを取得
-            const leftUpperArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftUpperArm)!
-            const leftLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftLowerArm)!
-            const leftHand = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftHand)!
-
-            ////// (2-1-2) 上腕の処理 (右腕のTFを使う。)
-            let elbowTargetPosition = this.getTargetPosition(this.avatar, "Left", rightElbowFromShoulderVecTF)
-            if (elbowTargetPosition) {
-                this.moveArm(leftUpperArm, leftLowerArm, elbowTargetPosition)
-                this.leftUpperArmTarget.position.set(elbowTargetPosition.x, elbowTargetPosition.y, elbowTargetPosition.z);
-            }
-
-            ////// (2-1-3) 下腕の処理
-            let handTargetPosition = this.getTargetPosition(this.avatar, "Left", rightWristFromShoulderVecTF)
-            if (handTargetPosition) {
-                this.moveArm(leftLowerArm, leftHand, handTargetPosition)
-                this.leftLowerArmTarget.position.set(handTargetPosition.x, handTargetPosition.y, handTargetPosition.z);
-            }
-
-            //// (2-2) 右腕
-            ////// (2-2-1) 上腕、下腕、手首のボーンを取得
-            const rightUpperArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightUpperArm)!
-            const rightLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightLowerArm)!
-            const rightHand = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightHand)!
-
-            ////// (2-1-2) 上腕の処理 (左腕のTFを使う。)
-            elbowTargetPosition = this.getTargetPosition(this.avatar, "Right", leftElbowFromShoulderVecTF)
-            if (elbowTargetPosition) {
-                this.moveArm(rightUpperArm, rightLowerArm, elbowTargetPosition)
-                this.rightUpperArmTarget.position.set(elbowTargetPosition.x, elbowTargetPosition.y, elbowTargetPosition.z);
-            }
-
-            ////// (2-1-3) 下腕の処理
-            handTargetPosition = this.getTargetPosition(this.avatar, "Right", leftWristFromShoulderVecTF)
-            if (handTargetPosition) {
-                this.moveArm(rightLowerArm, rightHand, handTargetPosition)
-                this.rightLowerArmTarget.position.set(handTargetPosition.x, handTargetPosition.y, handTargetPosition.z);
-            }
-
+            this.updatePoseWithRawInternal2(poses.singlePersonKeypoints3DMovingAverage)
         }
 
         if (this.enableHands && poseRig) {

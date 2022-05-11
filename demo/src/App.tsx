@@ -191,6 +191,16 @@ const Controller = () => {
         },
     };
 
+    const useSlerpSwitchProps: CommonSwitchProps = {
+        id: "use-slerp-switch",
+        title: "use-slerp-switch",
+        currentValue: avatar ? avatar.useSlerp : false,
+        onChange: (value: boolean) => {
+            avatar!.useSlerp = value;
+            setLastUpdateTime(new Date().getTime());
+        },
+    };
+
     const creditProps: CreditProps = {
         title: "Created by w-okada. FLECT, Co., Ltd.",
         homepage: "https://www.flect.co.jp/",
@@ -218,6 +228,7 @@ const Controller = () => {
             <CommonSlider {...calcModeSliderProps}></CommonSlider>
             <CommonSwitch {...targetVisibleSwitchProps}></CommonSwitch>
             <CommonSwitch {...useCustomArmRigSwitchProps}></CommonSwitch>
+            <CommonSwitch {...useSlerpSwitchProps}></CommonSwitch>
         </div>
     );
 };
