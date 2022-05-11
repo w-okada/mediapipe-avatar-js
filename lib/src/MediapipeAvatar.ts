@@ -289,7 +289,7 @@ export class MediapipeAvator {
             })
         }
 
-        const getTargetPosition = (avatar: VRM, side: "Left" | "Right", shoulderTF: THREE.Vector4, targetTF: THREE.Vector4) => {
+        const getTargetPosition = (avatar: VRM, side: "Left" | "Right", vector: THREE.Vector3) => {
             let VRMShoulder
             if (side == "Left") {
                 VRMShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftShoulder)
@@ -299,16 +299,23 @@ export class MediapipeAvator {
             if (!VRMShoulder) {
                 return null
             }
-            const vectorToTarget = targetTF.clone().sub(shoulderTF);
 
             const VRMShoulderWorldPosition = new THREE.Vector3();
             VRMShoulder.getWorldPosition(VRMShoulderWorldPosition);
             const VRMShoulderLocalPosition = VRMShoulder.worldToLocal(VRMShoulderWorldPosition.clone());
 
-            const targetLocalPosition = VRMShoulderLocalPosition.clone().add(new THREE.Vector3(vectorToTarget.x / 2, -1 * vectorToTarget.y / 2, 1 * vectorToTarget.z));// Z の*2は適当。mediapipeのzのスケールがおかしい。
+            const targetLocalPosition = VRMShoulderLocalPosition.clone().add(vector);
             const targetWorldPosition = VRMShoulder.localToWorld(targetLocalPosition.clone());
             return targetWorldPosition
         }
+
+
+
+        const getTargetVectorFromShoulderTF = (shoulderTF: THREE.Vector4, targetTF: THREE.Vector4) => {
+            const vectorToTarget = targetTF.clone().sub(shoulderTF);
+            return new THREE.Vector3(vectorToTarget.x / 2, -1 * vectorToTarget.y / 2, 1 * vectorToTarget.z) // x, yのスケールがおかしいので調整
+        }
+
 
         const moveArm = (joint: GLTFNode, effecter: GLTFNode, target: THREE.Vector3) => {
             const _goalPosition = new THREE.Vector3(target.x, target.y, target.z);
@@ -378,13 +385,14 @@ export class MediapipeAvator {
 
 
         if (poses && poses.singlePersonKeypoints3DMovingAverage) {
-            // (1) TFの結果を用いて、方から肘、手首までのベクトルを算出
+            // (1) TF処理
+            // TFの結果を用いて、方から肘、手首までのベクトルを算出
             // 左右のインデックスはMediapipeのドキュメントの名称をベースに設定。ここではフリップは考慮しない。
             // https://google.github.io/mediapipe/solutions/pose.html
             //// (1-1) 右腕
             const rightArmPointTFList = getArmPointTFList(poses.singlePersonKeypoints3DMovingAverage, 12, 14, 16)
-            // const rightElbowFromShoulderVecTF = getTargetVectorFromShoulderTF(rightArmPointTFList[0], rightArmPointTFList[1])
-            // const rightWristFromShoulderVecTF = getTargetVectorFromShoulderTF(rightArmPointTFList[0], rightArmPointTFList[1])
+            const rightElbowFromShoulderVecTF = getTargetVectorFromShoulderTF(rightArmPointTFList[0], rightArmPointTFList[1])
+            const rightWristFromShoulderVecTF = getTargetVectorFromShoulderTF(rightArmPointTFList[0], rightArmPointTFList[2])
 
             //// (1-2) 左腕
             // const leftArmPointTFList = getArmPointTFList(poses.singlePersonKeypoints3DMovingAverage, 11, 13, 15)
@@ -399,114 +407,20 @@ export class MediapipeAvator {
             const leftHand = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftHand)!
 
             ////// (2-1-2) 上腕の処理
-            const elbowTargetPosition = getTargetPosition(this.avatar, "Left", rightArmPointTFList[0], rightArmPointTFList[1])
+            const elbowTargetPosition = getTargetPosition(this.avatar, "Left", rightElbowFromShoulderVecTF)
             if (elbowTargetPosition) {
                 moveArm(leftUpperArm, leftLowerArm, elbowTargetPosition)
                 this.leftUpperArmTarget.position.set(elbowTargetPosition.x, elbowTargetPosition.y, elbowTargetPosition.z);
             }
 
             ////// (2-1-3) 下腕の処理
-            const handTargetPosition = getTargetPosition(this.avatar, "Left", rightArmPointTFList[0], rightArmPointTFList[2])
+            const handTargetPosition = getTargetPosition(this.avatar, "Left", rightWristFromShoulderVecTF)
             if (handTargetPosition) {
                 const leftLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftLowerArm)!
                 moveArm(leftLowerArm, leftHand, handTargetPosition)
                 this.leftLowerArmTarget.position.set(handTargetPosition.x, handTargetPosition.y, handTargetPosition.z);
             }
 
-            // // const leftShoulderTF = new THREE.Vector3(poses.singlePersonKeypoints3DMovingAverage![11].x, poses.singlePersonKeypoints3DMovingAverage![11].y, poses.singlePersonKeypoints3DMovingAverage![11].z);
-            // // const leftWristTF = new THREE.Vector3(poses.singlePersonKeypoints3DMovingAverage![15].x, poses.singlePersonKeypoints3DMovingAverage![15].y, poses.singlePersonKeypoints3DMovingAverage![15].z);
-            // const rightShoulderTF = new THREE.Vector3(poses.singlePersonKeypoints3DMovingAverage![12].x, poses.singlePersonKeypoints3DMovingAverage![12].y, poses.singlePersonKeypoints3DMovingAverage![12].z);
-            // const rightWristTF = new THREE.Vector3(poses.singlePersonKeypoints3DMovingAverage![16].x, poses.singlePersonKeypoints3DMovingAverage![16].y, poses.singlePersonKeypoints3DMovingAverage![16].z);
-            // // const leftShoulderToWristTF = leftWristTF.clone().sub(leftShoulderTF);
-            // const rightShoulderToWristTF = rightWristTF.clone().sub(rightShoulderTF);
-
-
-
-            // const VRMLeftShoulder = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftShoulder)!;
-            // const VRMLeftShoulderWorldPosition = new THREE.Vector3();
-            // VRMLeftShoulder.getWorldPosition(VRMLeftShoulderWorldPosition);
-            // const VRMLeftShoulderLocalPosition = VRMLeftShoulder.worldToLocal(VRMLeftShoulderWorldPosition.clone());
-            // const leftTargetLocalPosition = VRMLeftShoulderLocalPosition.clone().add(new THREE.Vector3(rightShoulderToWristTF.x, -1 * rightShoulderToWristTF.y, 1 * rightShoulderToWristTF.z));
-            // const leftTargetWorldPosition = VRMLeftShoulder.localToWorld(leftTargetLocalPosition.clone());
-            // this.leftArmTarget.position.set(targetPosition.x, targetPosition.y, targetPosition.z);
-
-
-            // // 目標位置のワールド座標
-            // const _goalPosition = new THREE.Vector3();
-            // leftTarget.getWorldPosition(_goalPosition);
-
-            // // 注目関節のワールド座標・姿勢等を取得する
-            // const _jointPosition = new THREE.Vector3();
-            // const _jointQuaternionInverse = new THREE.Quaternion();
-            // const _jointScale = new THREE.Vector3();
-            // leftLow.matrixWorld.decompose(_jointPosition, _jointQuaternionInverse, _jointScale);
-            // _jointQuaternionInverse.invert();
-
-            // //  注目関節 -> エフェクタのベクトル    
-            // const _effectorPosition = new THREE.Vector3();
-            // const _joint2EffectorVector = new THREE.Vector3();
-            // leftHand.getWorldPosition(_effectorPosition);
-            // _joint2EffectorVector.subVectors(_effectorPosition, _jointPosition);
-            // _joint2EffectorVector.applyQuaternion(_jointQuaternionInverse);
-            // _joint2EffectorVector.normalize();
-
-            // // 注目関節 -> 目標位置のベクトル
-            // const _joint2GoalVector = new THREE.Vector3();
-            // _joint2GoalVector.subVectors(_goalPosition, _jointPosition);
-            // _joint2GoalVector.applyQuaternion(_jointQuaternionInverse);
-            // _joint2GoalVector.normalize();
-
-            // // cos rad
-            // let deltaAngle = _joint2GoalVector.dot(_joint2EffectorVector);
-
-            // if (deltaAngle > 1.0) {
-            //     deltaAngle = 1.0;
-            // } else if (deltaAngle < -1.0) {
-            //     deltaAngle = - 1.0;
-            // }
-
-            // // rad
-            // deltaAngle = Math.acos(deltaAngle);
-
-            // // 振動回避
-            // if (deltaAngle < 1e-5) {
-            //     return;
-            // }
-
-            // // 回転軸
-            // const _axis = new THREE.Vector3();
-            // _axis.crossVectors(_joint2EffectorVector, _joint2GoalVector);
-            // _axis.normalize();
-
-            // // 回転
-            // const _quarternion = new THREE.Quaternion();
-            // _quarternion.setFromAxisAngle(_axis, deltaAngle);
-            // leftLow.quaternion.multiply(_quarternion);
-
-            // leftLow.updateMatrixWorld(true);
-
-
-
-
-
-            //     const bone = this.avatar.humanoid!.getBoneNode(this.leftArmBoneNames[0])!
-            //     const ikBone = this.leftArmIK.getRootBone()
-            //     bone.getWorldPosition(ikBone.position);
-            //     this.leftArmIK.solve()
-            //     updateArm(this.leftArmIKBones, this.leftArmBones, Math.PI);
-            //     // updateArm(this.leftArmIKBones, this.leftArmBones, 0);
-
-            //     const VRMRightShoulder = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightShoulder)!;
-            //     const VRMRightShoulderWorldPosition = new THREE.Vector3();
-            //     VRMRightShoulder.getWorldPosition(VRMRightShoulderWorldPosition);
-            //     // const VRMRightShoulderLocalPosition = VRMRightShoulder.worldToLocal(VRMRightShoulderWorldPosition.clone());
-            //     // const rightTargetLocalPosition = VRMRightShoulderLocalPosition.clone().add(new THREE.Vector3(leftShoulderToWristTF.x, -1 * leftShoulderToWristTF.y, 1 * leftShoulderToWristTF.z));
-            //     // const rightTargetWorldPosition = VRMRightShoulder.localToWorld(rightTargetLocalPosition.clone());
-            //     // ikState.movingTargets[1].position.set(rightTargetWorldPosition.x, rightTargetWorldPosition.y, rightTargetWorldPosition.z);
-
-
-            //     // updateArm(ikState.bonesList[0], ikState.nodesList[0], Math.PI / 2);
-            //     // updateArm(ikState.bonesList[1], ikState.nodesList[1], -Math.PI / 2);
         }
 
         if (this.enableHands && poseRig) {
