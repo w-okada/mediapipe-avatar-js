@@ -50,25 +50,6 @@ export class MediapipeAvator {
         this.avatar = avatar
         this.offset = offset
 
-        // for (let i = 0; i < this.leftArmBoneNames.length; i++) {
-        //     const ikBone = new THREE.Bone()
-        //     const bone = avatar.humanoid!.getBoneNode(this.leftArmBoneNames[i])!
-        //     if (i == 0) {
-        //         bone.getWorldPosition(ikBone.position);
-        //     } else {
-        //         ikBone.position.set(bone.position.x, bone.position.y, bone.position.z)
-        //         this.leftArmIKBones[i - 1].add(ikBone)
-        //     }
-        //     this.leftArmIKBones.push(ikBone)
-        //     this.leftArmBones.push(bone)
-
-        //     const target = i == this.leftArmBoneNames.length - 1 ? this.leftArmTarget : null
-        //     console.log(`LEFT ARM TARGET:[${i}]: ${this.leftArmBoneNames[i]}, `, target)
-        //     this.leftIKChain.add(new IKJoint(ikBone, {}), { target })
-        // }
-        // this.leftArmIK.add(this.leftIKChain)
-
-        // scene.add(this.leftArmIK.getRootBone());
         scene.add(this.leftLowerArmTarget)
         scene.add(this.leftUpperArmTarget)
         scene.add(this.rightLowerArmTarget)
@@ -297,9 +278,11 @@ export class MediapipeAvator {
         const getTargetPosition = (avatar: VRM, side: "Left" | "Right", vector: THREE.Vector3) => {
             let VRMShoulder
             if (side == "Left") {
-                VRMShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftShoulder)
+                // VRMShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftShoulder)
+                VRMShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftUpperArm)
             } else {
-                VRMShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightShoulder)
+                // VRMShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightShoulder)
+                VRMShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightUpperArm)
             }
             if (!VRMShoulder) {
                 return null
