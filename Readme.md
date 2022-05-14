@@ -1,9 +1,11 @@
 # Mediapipe Avatar
 
-Mediapipe Avatar is avatar blendshape library based on [Mediapipe](https://google.github.io/mediapipe/) and [Kalidokit](https://github.com/yeemachine/kalidokit). This module works in the following two modes.
+Mediapipe Avatar is avatar blendshape library based on [Mediapipe](https://google.github.io/mediapipe/) and [Kalidokit](https://github.com/yeemachine/kalidokit). ~~This module works in the following two modes.~~
 
 -   work with [wasm-simd webworker](https://github.com/w-okada/image-analyze-workers) using mediapipe tflite model.
--   work with pure mediapipe [JavaScript Solutions](https://google.github.io/mediapipe/getting_started/javascript)
+-   ~~work with pure mediapipe [JavaScript Solutions](https://google.github.io/mediapipe/getting_started/javascript)~~
+
+Note: Mediapipe js solution is omitted because of the size of package.
 
 ![image](https://user-images.githubusercontent.com/48346627/167111544-50aae766-cb65-49e9-b453-6ad4b7623094.png)
 
