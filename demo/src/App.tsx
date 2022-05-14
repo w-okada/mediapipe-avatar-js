@@ -16,7 +16,7 @@ const LandmarkGrid = window.LandmarkGrid;
 console.log("LANDMARK_GRID", LandmarkGrid);
 
 const Controller = () => {
-    const { inputSourceType, setInputSourceType, setInputSource, updateDetector, applyMediapipe, setApplyMediapipe, detector, avatar, useCustomArmRig, setUseCustomArmRig } = useAppState();
+    const { inputSourceType, setInputSourceType, setInputSource, updateDetector, detector, avatar, useCustomArmRig, setUseCustomArmRig } = useAppState();
     const [_lastUpdateTime, setLastUpdateTime] = useState(0);
 
     const videoInputSelectorProps: VideoInputSelectorProps = {
@@ -26,39 +26,10 @@ const Controller = () => {
         onInputSourceChanged: setInputSource,
     };
 
-    const useTFLiteSwitchProps: CommonSwitchProps = {
-        id: "use-tflite-switch",
-        title: "use-tflite-switch",
-        currentValue: detector ? detector!.config.useTFLiteWebWorker : false,
-        onChange: (value: boolean) => {
-            detector?.setUseTFLiteWebWorker(value);
-            updateDetector();
-        },
-    };
-    const useMediapipeProps: CommonSwitchProps = {
-        id: "use-mediapipe-switch",
-        title: "use-mediapipe-switch",
-        currentValue: detector ? detector!.config.useMediapipe : false,
-        onChange: (value: boolean) => {
-            detector?.setUseMediapipe(value);
-            updateDetector();
-        },
-    };
-
-    const applyMediaPipeProps: CommonSwitchProps = {
-        id: "apply-mediapipe-switch",
-        title: "apply-mediapipe-switch",
-        currentValue: applyMediapipe,
-        onChange: (value: boolean) => {
-            setApplyMediapipe(value);
-            updateDetector();
-        },
-    };
-
     const useFullbodyCaptureProps: CommonSwitchProps = {
         id: "use-fullbody-capture-switch",
         title: "use-fullbody-capture-switch",
-        currentValue: detector ? detector!.config.enableFullBodyCapture : false,
+        currentValue: detector ? detector!.enableFullBodyCapture : false,
         onChange: (value: boolean) => {
             detector?.setEnableFullbodyCapture(value);
             updateDetector();
@@ -74,6 +45,7 @@ const Controller = () => {
             setLastUpdateTime(new Date().getTime());
         },
     };
+
     const handControlProps: CommonSwitchProps = {
         id: "hand-control-switch",
         title: "hand-control-switch",
@@ -87,13 +59,15 @@ const Controller = () => {
     const tfliteProcessWidthSliderProps: CommonSliderProps = {
         id: "tflite-process-width-slider",
         title: "tflite process width",
-        currentValue: detector ? detector!.params.TFLiteProcessWidth : 300,
+        currentValue: detector ? detector!.faceParams.faceProcessWidth : 300,
         max: 1024,
         min: 100,
         step: 10,
         width: "30%",
         onChange: (value: number) => {
-            detector!.setTFLiteProcessSize(value, detector!.params.TFLiteProcessHeight);
+            detector!.handParams.handProcessWidth = value;
+            detector!.faceParams.faceProcessWidth = value;
+            detector!.poseParams.poseProcessWidth = value;
             updateDetector();
         },
         integer: true,
@@ -101,13 +75,15 @@ const Controller = () => {
     const tfliteProcessHeightSliderProps: CommonSliderProps = {
         id: "tflite-process-height-slider",
         title: "tflite process height",
-        currentValue: detector ? detector!.params.TFLiteProcessHeight : 300,
+        currentValue: detector ? detector!.faceParams.faceProcessHeight : 300,
         max: 1000,
         min: 100,
         step: 10,
         width: "30%",
         onChange: (value: number) => {
-            detector!.setTFLiteProcessSize(detector!.params.TFLiteProcessWidth, value);
+            detector!.handParams.handProcessHeight = value;
+            detector!.faceParams.faceProcessHeight = value;
+            detector!.poseParams.poseProcessHeight = value;
             updateDetector();
         },
         integer: true,
@@ -116,13 +92,14 @@ const Controller = () => {
     const movingAverageWindowSliderProps: CommonSliderProps = {
         id: "moving-average-window-slider",
         title: "moving average window",
-        currentValue: detector ? detector!.params.faceMovingAverageWindow : 1,
+        currentValue: detector ? detector!.faceParams.faceMovingAverageWindow : 1,
         max: 100,
         min: 1,
         step: 1,
         width: "30%",
         onChange: (value: number) => {
-            detector!.setMovingAverageWindow(value);
+            detector!.faceParams.faceMovingAverageWindow = value;
+            detector!.poseParams.poseMovingAverageWindow = value;
             updateDetector();
         },
         integer: true,
@@ -131,13 +108,14 @@ const Controller = () => {
     const affineResizedSliderProps: CommonSliderProps = {
         id: "affine-resized-slider",
         title: "affine resized ",
-        currentValue: detector ? detector!.params.TFLiteAffineResizedFactor : 2,
+        currentValue: detector ? detector!.handParams.handAffineResizedFactor : 2,
         max: 8,
         min: 1,
         step: 1,
         width: "30%",
         onChange: (value: number) => {
-            detector!.setTFLiteAffineResizedFactor(value);
+            detector!.handParams.handAffineResizedFactor = value;
+            detector!.poseParams.poseAffineResizedFactor = value;
             updateDetector();
         },
         integer: true,
@@ -160,13 +138,13 @@ const Controller = () => {
     const calcModeSliderProps: CommonSliderProps = {
         id: "calcmode-slider",
         title: "calcmode(debug) ",
-        currentValue: detector ? detector!.params.calcMode : 0,
+        currentValue: detector ? detector!.poseParams.poseCropExt : 0,
         max: 2,
         min: 0,
         step: 1,
         width: "30%",
         onChange: (value: number) => {
-            detector!.setCalcMode(value);
+            detector!.poseParams.poseCropExt = value;
             updateDetector();
         },
         integer: true,
@@ -214,9 +192,7 @@ const Controller = () => {
         <div style={{ display: "flex", flexDirection: "column" }}>
             <Credit {...creditProps}></Credit>
             <VideoInputSelector {...videoInputSelectorProps}></VideoInputSelector>
-            <CommonSwitch {...useTFLiteSwitchProps}></CommonSwitch>
-            <CommonSwitch {...useMediapipeProps}></CommonSwitch>
-            <CommonSwitch {...applyMediaPipeProps}></CommonSwitch>
+
             <CommonSwitch {...useFullbodyCaptureProps}></CommonSwitch>
             <CommonSwitch {...legControlProps}></CommonSwitch>
             <CommonSwitch {...handControlProps}></CommonSwitch>
@@ -403,33 +379,18 @@ const App = () => {
             snapCtx.drawImage(inputSourceElement, 0, 0, snap.width, snap.height);
             try {
                 if (snap.width > 0 && snap.height > 0) {
-                    const { poses, posesMP, faceRig, leftHandRig, rightHandRig, poseRig, faceRigMP, leftHandRigMP, rightHandRigMP, poseRigMP } = await detector.predict(snap);
+                    const { poses, faceRig, leftHandRig, rightHandRig, poseRig } = await detector.predict(snap);
                     // drawPoses(poses, posesMP);
-
-                    if (applyMediapipe) {
-                        if (useCustomArmRig) {
-                            avatar.updatePoseWithRaw(faceRigMP, poseRigMP, leftHandRigMP, rightHandRigMP, posesMP);
-                        } else {
-                            avatar.updatePose(faceRigMP, poseRigMP, leftHandRigMP, rightHandRigMP);
-                        }
-                        if (posesMP) {
-                            grid.updateLandmarks(posesMP.singlePersonKeypoints3DMovingAverage, POSE_CONNECTIONS, [
-                                { list: Object.values(POSE_LANDMARKS_LEFT), color: "LEFT" },
-                                { list: Object.values(POSE_LANDMARKS_RIGHT), color: "RIGHT" },
-                            ]);
-                        }
+                    if (useCustomArmRig) {
+                        avatar.updatePoseWithRaw(faceRig, poseRig, leftHandRig, rightHandRig, poses);
                     } else {
-                        if (useCustomArmRig) {
-                            avatar.updatePoseWithRaw(faceRig, poseRig, leftHandRig, rightHandRig, poses);
-                        } else {
-                            avatar.updatePose(faceRig, poseRig, leftHandRig, rightHandRig);
-                        }
-                        if (poses) {
-                            grid.updateLandmarks(poses.singlePersonKeypoints3DMovingAverage, POSE_CONNECTIONS, [
-                                { list: Object.values(POSE_LANDMARKS_LEFT), color: "LEFT" },
-                                { list: Object.values(POSE_LANDMARKS_RIGHT), color: "RIGHT" },
-                            ]);
-                        }
+                        avatar.updatePose(faceRig, poseRig, leftHandRig, rightHandRig);
+                    }
+                    if (poses) {
+                        grid.updateLandmarks(poses.singlePersonKeypoints3DMovingAverage, POSE_CONNECTIONS, [
+                            { list: Object.values(POSE_LANDMARKS_LEFT), color: "LEFT" },
+                            { list: Object.values(POSE_LANDMARKS_RIGHT), color: "RIGHT" },
+                        ]);
                     }
                 }
             } catch (error) {

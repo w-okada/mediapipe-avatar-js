@@ -66,7 +66,6 @@ export const AppStateProvider = ({ children }: Props) => {
     //// (1-2) detector初期化
     useEffect(() => {
         detectorRef.current = new MotionDetector();
-        detectorRef.current.setUseTFLiteWebWorker(true);
         detectorRef.current.setEnableFullbodyCapture(true);
         detectorRef.current.initializeManagers();
         setDetector(detectorRef.current);
