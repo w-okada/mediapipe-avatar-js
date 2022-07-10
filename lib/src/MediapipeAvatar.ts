@@ -462,7 +462,7 @@ export class MediapipeAvator {
         }
 
         if (poses && poses.singlePersonKeypoints3DMovingAverage) {
-            console.log("POSE3D:", poses.singlePersonKeypoints3DMovingAverage)
+            // console.log("POSE3D:", poses.singlePersonKeypoints3DMovingAverage)
             this.updatePoseWithRawInternal2(poses)
         }
 
