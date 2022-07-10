@@ -10,6 +10,16 @@ export type AvatarOffset = {
     z: number
 }
 
+//////////////////////////// 
+// updatePose と　updatePoseWithRawの違い。
+// updatePoseはKalidoKitサンプルを参考に作成している。KalidoKitの出力をそのまま使う。
+// updatePoseWithRawは一部カスタマイズを加えている。
+// (動機) updatePoseだと、関節の制限により一部の動きが再現ができなかった。
+//  MediaPipeからの出力からx,y,z座標を幾何学的に計算して、クォータニオンを用いて処理を試みている。
+// 現時点では、可動域は広がったが、腕がねじれてしまう問題がでている。（3D素人なので今のところ限界。勉強中。）
+///////////////////////////
+
+
 export class MediapipeAvator {
 
     avatar: VRM;
@@ -237,12 +247,11 @@ export class MediapipeAvator {
         }
     }
 
+
     ///////////////////////////////////////////////////////////////////////////////////
-    // RigArm With Rawdata
+    // updatePoseは上までで完結している。
+    // 以下はupdatePoseWithRawの処理
     ///////////////////////////////////////////////////////////////////////////////////
-
-
-
     rigUpperShaft = (riggedPose: TPose) => {
         this.rigRotation("Hips", riggedPose.Hips.rotation, 0.7);
         this.rigPosition(
@@ -377,65 +386,6 @@ export class MediapipeAvator {
         return result
     }
 
-    // updatePoseWithRawInternal = (singlePersonKeypoints3DMovingAverage: Keypoint[]) => {
-    //     // (1) TF処理
-    //     // TFの結果を用いて、方から肘、手首までのベクトルを算出
-    //     // 左右のインデックスはMediapipeのドキュメントの名称をベースに設定。ここではフリップは考慮しない。
-    //     // https://google.github.io/mediapipe/solutions/pose.html
-    //     //// (1-1) 右腕
-    //     const rightArmPointTFList = this.getArmPointTFList(singlePersonKeypoints3DMovingAverage, 12, 14, 16)
-    //     const rightElbowFromShoulderVecTF = this.getTargetVectorFromShoulderTF(rightArmPointTFList[0], rightArmPointTFList[1])
-    //     const rightWristFromShoulderVecTF = this.getTargetVectorFromShoulderTF(rightArmPointTFList[0], rightArmPointTFList[2])
-
-    //     //// (1-2) 左腕
-    //     const leftArmPointTFList = this.getArmPointTFList(singlePersonKeypoints3DMovingAverage, 11, 13, 15)
-    //     const leftElbowFromShoulderVecTF = this.getTargetVectorFromShoulderTF(leftArmPointTFList[0], leftArmPointTFList[1])
-    //     const leftWristFromShoulderVecTF = this.getTargetVectorFromShoulderTF(leftArmPointTFList[0], leftArmPointTFList[2])
-
-    //     // (2) VRM処理
-    //     //// (2-1) 左腕
-    //     ////// (2-1-1) 上腕、下腕、手首のボーンを取得
-    //     const leftUpperArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftUpperArm)!
-    //     const leftLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftLowerArm)!
-    //     const leftHand = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftHand)!
-
-    //     ////// (2-1-2) 上腕の処理 (右腕のTFを使う。)
-    //     let elbowTargetPosition = this.getTargetPosition(this.avatar, "Left", rightElbowFromShoulderVecTF)
-    //     if (elbowTargetPosition) {
-    //         this.moveArm(leftUpperArm, leftLowerArm, elbowTargetPosition, this.useSlerp)
-    //         this.leftUpperArmTarget.position.set(elbowTargetPosition.x, elbowTargetPosition.y, elbowTargetPosition.z);
-    //     }
-
-    //     ////// (2-1-3) 下腕の処理
-    //     let handTargetPosition = this.getTargetPosition(this.avatar, "Left", rightWristFromShoulderVecTF)
-    //     if (handTargetPosition) {
-    //         this.moveArm(leftLowerArm, leftHand, handTargetPosition, this.useSlerp)
-    //         this.leftLowerArmTarget.position.set(handTargetPosition.x, handTargetPosition.y, handTargetPosition.z);
-    //     }
-
-    //     //// (2-2) 右腕
-    //     ////// (2-2-1) 上腕、下腕、手首のボーンを取得
-    //     const rightUpperArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightUpperArm)!
-    //     const rightLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightLowerArm)!
-    //     const rightHand = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightHand)!
-
-    //     ////// (2-1-2) 上腕の処理 (左腕のTFを使う。)
-    //     elbowTargetPosition = this.getTargetPosition(this.avatar, "Right", leftElbowFromShoulderVecTF)
-    //     if (elbowTargetPosition) {
-    //         this.moveArm(rightUpperArm, rightLowerArm, elbowTargetPosition, this.useSlerp)
-    //         this.rightUpperArmTarget.position.set(elbowTargetPosition.x, elbowTargetPosition.y, elbowTargetPosition.z);
-    //     }
-
-    //     ////// (2-1-3) 下腕の処理
-    //     handTargetPosition = this.getTargetPosition(this.avatar, "Right", leftWristFromShoulderVecTF)
-    //     if (handTargetPosition) {
-    //         this.moveArm(rightLowerArm, rightHand, handTargetPosition, this.useSlerp)
-    //         this.rightLowerArmTarget.position.set(handTargetPosition.x, handTargetPosition.y, handTargetPosition.z);
-    //     }
-
-    // }
-
-
     updatePoseWithRawInternal2 = (posePrediction: PosePredictionEx) => {
 
         // (1) TF処理
@@ -512,6 +462,7 @@ export class MediapipeAvator {
         }
 
         if (poses && poses.singlePersonKeypoints3DMovingAverage) {
+            console.log("POSE3D:", poses.singlePersonKeypoints3DMovingAverage)
             this.updatePoseWithRawInternal2(poses)
         }
 

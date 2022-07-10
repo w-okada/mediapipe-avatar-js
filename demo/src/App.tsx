@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { useAppState } from "./provider/AppStateProvider";
 
@@ -11,12 +11,13 @@ import { VRM } from "@pixiv/three-vrm";
 let GlobalLoopID = 0;
 import { POSE_CONNECTIONS, POSE_LANDMARKS_LEFT, POSE_LANDMARKS_RIGHT } from "@mediapipe/pose";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-
+import { Holistic } from "@mediapipe/holistic";
+import * as Kalidokit from "kalidokit";
 const LandmarkGrid = window.LandmarkGrid;
 console.log("LANDMARK_GRID", LandmarkGrid);
 
 const Controller = () => {
-    const { inputSourceType, setInputSourceType, setInputSource, updateDetector, detector, avatar, useCustomArmRig, setUseCustomArmRig } = useAppState();
+    const { inputSourceType, setInputSourceType, setInputSource, updateDetector, detector, avatar, useCustomArmRig, setUseCustomArmRig, useMediaPipe, setUseMediaPipe } = useAppState();
     const [_lastUpdateTime, setLastUpdateTime] = useState(0);
 
     const videoInputSelectorProps: VideoInputSelectorProps = {
@@ -53,6 +54,15 @@ const Controller = () => {
         onChange: (value: boolean) => {
             avatar!.enableHands = value;
             setLastUpdateTime(new Date().getTime());
+        },
+    };
+
+    const useMediaPipeProps: CommonSwitchProps = {
+        id: "use-mediapipe-switch",
+        title: "use mediapipe",
+        currentValue: useMediaPipe,
+        onChange: (value: boolean) => {
+            setUseMediaPipe(value);
         },
     };
 
@@ -197,6 +207,8 @@ const Controller = () => {
             <CommonSwitch {...legControlProps}></CommonSwitch>
             <CommonSwitch {...handControlProps}></CommonSwitch>
 
+            <CommonSwitch {...useMediaPipeProps}></CommonSwitch>
+
             <CommonSlider {...movingAverageWindowSliderProps}></CommonSlider>
             <CommonSlider {...affineResizedSliderProps}></CommonSlider>
             <CommonSlider {...tfliteProcessHeightSliderProps}></CommonSlider>
@@ -210,7 +222,8 @@ const Controller = () => {
 };
 
 const App = () => {
-    const { inputSource, threeState, applyMediapipe, setAvatarVRM, detector, avatar, useCustomArmRig } = useAppState();
+    const { inputSource, threeState, applyMediapipe, setAvatarVRM, detector, avatar, useCustomArmRig, useMediaPipe } = useAppState();
+    const mediapipePredictResolverRef = useRef<((value: void | PromiseLike<void>) => void) | null>(null);
 
     const [grid, setGrid] = useState<any>();
     // window.renderer = new THREE.WebGLRenderer();
@@ -243,12 +256,12 @@ const App = () => {
     }, [inputSource]);
 
     // (A) 初期化処理
-    //// (1) three の初期化
+    //// (a-1) three の初期化
     useEffect(() => {
         const initThree = async () => {
             //// (1-1) Canvas取得
-            const canvas = document.getElementById("avatar") as HTMLCanvasElement;
-
+            const canvas = document.getElementById("avatar") as HTMLDivElement;
+            console.log("size::::", canvas.clientHeight);
             //// (1-2) シーン設定
             const scene = new THREE.Scene();
             // scene.add(new THREE.AxesHelper(5));
@@ -309,7 +322,7 @@ const App = () => {
         };
         initThree();
     }, []);
-
+    //// (a-2) landmark grid
     useEffect(() => {
         const landmarkContainer = document.getElementById("grid") as HTMLDivElement;
         const grid = new LandmarkGrid(landmarkContainer, {
@@ -331,6 +344,95 @@ const App = () => {
         setGrid(grid);
     }, []);
 
+    //// (a-3) mediapipe
+    const holistic = useMemo(() => {
+        if (!avatar) {
+            return;
+        }
+        console.log("initial holistic");
+        const holistic = new Holistic({
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`;
+            },
+        });
+        holistic.setOptions({
+            modelComplexity: 1,
+            smoothLandmarks: true,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.7,
+            refineFaceLandmarks: true,
+        });
+
+        holistic.onResults((results) => {
+            if (mediapipePredictResolverRef.current) {
+                mediapipePredictResolverRef.current();
+                mediapipePredictResolverRef.current = null;
+            }
+
+            let faceRig: any;
+            let poseRig: any;
+            let leftHandRig: any;
+            let rightHandRig: any;
+
+            const faceLandmarks = results.faceLandmarks;
+            // Pose 3D Landmarks are with respect to Hip distance in meters
+            //@ts-ignore
+            const pose3DLandmarks = results.ea;
+            // Pose 2D landmarks are with respect to videoWidth and videoHeight
+            const pose2DLandmarks = results.poseLandmarks;
+            // Be careful, hand landmarks may be reversed
+            const leftHandLandmarks = results.rightHandLandmarks;
+            const rightHandLandmarks = results.leftHandLandmarks;
+
+            const snap = document.createElement("canvas") as HTMLCanvasElement;
+            // Animate Face
+            if (faceLandmarks) {
+                faceRig = Kalidokit.Face.solve(faceLandmarks, {
+                    runtime: "mediapipe",
+                    imageSize: {
+                        width: snap.width,
+                        height: snap.height,
+                    },
+                });
+            } else {
+                console.log("[mediapipe] no face landmark");
+            }
+
+            // Animate Pose
+            if (pose2DLandmarks && pose3DLandmarks) {
+                poseRig = Kalidokit.Pose.solve(pose3DLandmarks, pose2DLandmarks, {
+                    runtime: "mediapipe",
+                    imageSize: {
+                        width: snap.width,
+                        height: snap.height,
+                    },
+                });
+            } else {
+                console.log("[mediapipe] no pose landmark");
+            }
+
+            // Animate Hands
+            if (leftHandLandmarks) {
+                leftHandRig = Kalidokit.Hand.solve(leftHandLandmarks, "Left");
+            } else {
+                console.log("[mediapipe] no left hand landmark");
+            }
+            if (rightHandLandmarks) {
+                rightHandRig = Kalidokit.Hand.solve(rightHandLandmarks, "Right");
+            } else {
+                console.log("[mediapipe] no right hand landmark");
+            }
+
+            if (useCustomArmRig) {
+                // @ts-ignore
+                avatar?.updatePoseWithRaw(faceRig, poseRig, leftHandRig, rightHandRig, { singlePersonKeypoints3DMovingAverage: pose3DLandmarks });
+            } else {
+                avatar?.updatePose(faceRig, poseRig, leftHandRig, rightHandRig);
+            }
+        });
+
+        return holistic;
+    }, [avatar]);
     // (B) Processing
 
     //// (1) Main
@@ -353,7 +455,7 @@ const App = () => {
         };
 
         const render = async () => {
-            if (!detector) {
+            if (!detector || !holistic) {
                 console.log("detector null");
                 return;
             }
@@ -379,18 +481,25 @@ const App = () => {
             snapCtx.drawImage(inputSourceElement, 0, 0, snap.width, snap.height);
             try {
                 if (snap.width > 0 && snap.height > 0) {
-                    const { poses, faceRig, leftHandRig, rightHandRig, poseRig } = await detector.predict(snap);
-                    // drawPoses(poses, posesMP);
-                    if (useCustomArmRig) {
-                        avatar.updatePoseWithRaw(faceRig, poseRig, leftHandRig, rightHandRig, poses);
+                    if (useMediaPipe) {
+                        await new Promise<void>((resolve) => {
+                            mediapipePredictResolverRef.current = resolve;
+                            holistic.send({ image: snap });
+                        });
                     } else {
-                        avatar.updatePose(faceRig, poseRig, leftHandRig, rightHandRig);
-                    }
-                    if (poses) {
-                        grid.updateLandmarks(poses.singlePersonKeypoints3DMovingAverage, POSE_CONNECTIONS, [
-                            { list: Object.values(POSE_LANDMARKS_LEFT), color: "LEFT" },
-                            { list: Object.values(POSE_LANDMARKS_RIGHT), color: "RIGHT" },
-                        ]);
+                        const { poses, faceRig, leftHandRig, rightHandRig, poseRig } = await detector.predict(snap);
+                        // drawPoses(poses, posesMP);
+                        if (useCustomArmRig) {
+                            avatar.updatePoseWithRaw(faceRig, poseRig, leftHandRig, rightHandRig, poses);
+                        } else {
+                            avatar.updatePose(faceRig, poseRig, leftHandRig, rightHandRig);
+                        }
+                        if (poses) {
+                            grid.updateLandmarks(poses.singlePersonKeypoints3DMovingAverage, POSE_CONNECTIONS, [
+                                { list: Object.values(POSE_LANDMARKS_LEFT), color: "LEFT" },
+                                { list: Object.values(POSE_LANDMARKS_RIGHT), color: "RIGHT" },
+                            ]);
+                        }
                     }
                 }
             } catch (error) {
@@ -422,7 +531,7 @@ const App = () => {
             console.log("CANCEL", renderRequestId);
             cancelAnimationFrame(renderRequestId);
         };
-    }, [inputSourceElement, applyMediapipe, grid, detector, avatar, useCustomArmRig]);
+    }, [inputSourceElement, applyMediapipe, grid, detector, avatar, useCustomArmRig, holistic, useMediaPipe]);
 
     return (
         <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", objectFit: "contain", alignItems: "flex-start" }}>

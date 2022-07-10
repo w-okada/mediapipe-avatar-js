@@ -23,6 +23,9 @@ type AppStateValue = {
     avatar: MediapipeAvator | undefined;
     detector: MotionDetector | undefined;
     updateDetector: () => void;
+
+    useMediaPipe: boolean;
+    setUseMediaPipe: (val: boolean) => void;
 };
 
 const AppStateContext = React.createContext<AppStateValue | null>(null);
@@ -49,6 +52,7 @@ export const AppStateProvider = ({ children }: Props) => {
     const [detector, setDetector] = useState<MotionDetector | undefined>(detectorRef.current);
     const [_updateTime, setUpdateTime] = useState<number>(0);
 
+    const [useMediaPipe, setUseMediaPipe] = useState(false);
     // (1) 初期化
     //// (1-1) Input初期化
     useEffect(() => {
@@ -111,6 +115,9 @@ export const AppStateProvider = ({ children }: Props) => {
         avatar,
         detector,
         updateDetector,
+
+        useMediaPipe,
+        setUseMediaPipe,
     };
 
     return <AppStateContext.Provider value={providerValue}>{children}</AppStateContext.Provider>;

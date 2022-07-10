@@ -10,6 +10,19 @@ initialParams.handProcessHeight = 300
 initialParams.poseProcessWidth = 300
 initialParams.poseProcessHeight = 300
 
+export type MotionDetectorResult = {
+    hands: HandPredictionEx | null
+    faces: FacePredictionEx | null
+    poses: PosePredictionEx | null
+
+    leftHandRig: kalido.THand<kalido.Side> | null
+    rightHandRig: kalido.THand<kalido.Side> | null
+    faceRig: kalido.TFace | null
+    poseRig: kalido.TPose | null
+}
+
+
+
 export class MotionDetector {
     enableFullBodyCapture: boolean = true
 
@@ -110,7 +123,7 @@ export class MotionDetector {
     //////////////////////////////////////////
     //// (C-1) main prediction   
     //////////////////////////////////////////
-    predict = async (snap: HTMLCanvasElement) => {
+    predict = async (snap: HTMLCanvasElement): Promise<MotionDetectorResult> => {
         if (this.handDetector && !this.handProcessing && this.enableFullBodyCapture) {
             this.handProcessing = true
             this.handPromise = this.predictHands(snap)
@@ -132,7 +145,6 @@ export class MotionDetector {
         } catch (err) {
             console.log("catch error:::", err)
         }
-
         return {
             hands: this.latestHands,
             faces: this.latestFaces,
@@ -257,6 +269,5 @@ export class MotionDetector {
         }
         this.poseProcessing = false
         return "predictPoses"
-
     }
 }
