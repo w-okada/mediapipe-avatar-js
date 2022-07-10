@@ -1,6 +1,6 @@
 import * as kalido from "./kalido"
 import { MediapipeMixConfig, generateMediapipeMixDefaultConfig, MediapipeMixOperationParams, generateDefaultMediapipeMixParams, MediapipeMixWorkerManager, HandPredictionEx, FacePredictionEx, PosePredictionEx, OperationType } from "@dannadori/mediapipe-mix-worker-js"
-
+export type { HandPredictionEx, FacePredictionEx, PosePredictionEx }
 const initialConfig: MediapipeMixConfig = generateMediapipeMixDefaultConfig()
 const initialParams: MediapipeMixOperationParams = generateDefaultMediapipeMixParams()
 initialParams.faceProcessWidth = 300
