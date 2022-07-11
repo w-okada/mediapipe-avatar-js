@@ -22,8 +22,8 @@ export type AvatarOffset = {
 
 export class MediapipeAvator {
 
-    avatar: VRM;
-    scene: THREE.Scene
+    avatar!: VRM;
+    scene!: THREE.Scene
     offset: AvatarOffset
     enableFace = true
     enableUpperBody = true
@@ -43,17 +43,29 @@ export class MediapipeAvator {
 
     rightLowerArmTarget = new THREE.Mesh(new THREE.SphereGeometry(0.05), new THREE.MeshBasicMaterial({ color: this.RIGHT_LOWER_ARM_TARGET_COLOR }));
     rightUpperArmTarget = new THREE.Mesh(new THREE.SphereGeometry(0.05), new THREE.MeshBasicMaterial({ color: this.RIGHT_UPPER_ARM_TARGET_COLOR }));
-    constructor(avatar: VRM, scene: THREE.Scene, offset: AvatarOffset = { x: 0, y: 0, z: 0 }) {
+    constructor(avatar?: VRM, scene?: THREE.Scene, offset: AvatarOffset = { x: 0, y: 0, z: 0 }) {
+        if (avatar) {
+            this.avatar = avatar
+        }
+        if (scene) {
+            this.scene = scene
+            scene.add(this.leftLowerArmTarget)
+            scene.add(this.leftUpperArmTarget)
+            scene.add(this.rightLowerArmTarget)
+            scene.add(this.rightUpperArmTarget)
+        }
+        this.offset = offset
+    }
+    initialize = (avatar: VRM, scene: THREE.Scene, offset: AvatarOffset = { x: 0, y: 0, z: 0 }) => {
         this.avatar = avatar
         this.scene = scene
         this.offset = offset
-
         scene.add(this.leftLowerArmTarget)
         scene.add(this.leftUpperArmTarget)
         scene.add(this.rightLowerArmTarget)
         scene.add(this.rightUpperArmTarget)
-
     }
+
     setOffset(offset: AvatarOffset) {
         this.offset = offset
     }
