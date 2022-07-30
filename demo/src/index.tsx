@@ -1,13 +1,12 @@
 import * as React from "react";
-import ReactDOM from "react-dom";
 import App from "./App";
 import { AppStateProvider } from "./provider/AppStateProvider";
+import { createRoot } from "react-dom/client";
 
-ReactDOM.render(
-    <React.StrictMode>
-        <AppStateProvider>
-            <App />
-        </AppStateProvider>
-    </React.StrictMode>,
-    document.getElementById("app")
+const container = document.getElementById("app")!;
+const root = createRoot(container);
+root.render(
+    <AppStateProvider>
+        <App />
+    </AppStateProvider>
 );

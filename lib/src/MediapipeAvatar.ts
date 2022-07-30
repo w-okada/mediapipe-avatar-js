@@ -1,7 +1,7 @@
 
 import { GLTFNode, VRM, VRMSchema } from "@pixiv/three-vrm";
 import { Face, Side, TFace, THand, TPose, Utils, Vector } from "./kalido";
-import { PosePredictionEx } from "@dannadori/mediapipe-mix-worker-js"
+import { PosePredictionEx } from "@dannadori/mediapipe-mix2-worker-js"
 
 import * as THREE from "three";
 export type AvatarOffset = {

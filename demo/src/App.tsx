@@ -69,15 +69,15 @@ const Controller = () => {
     const tfliteProcessWidthSliderProps: CommonSliderProps = {
         id: "tflite-process-width-slider",
         title: "tflite process width",
-        currentValue: detector ? detector!.faceParams.faceProcessWidth : 300,
+        currentValue: detector?.faceParams?.faceProcessWidth || 300,
         max: 1024,
         min: 100,
         step: 10,
         width: "30%",
         onChange: (value: number) => {
-            detector!.handParams.handProcessWidth = value;
-            detector!.faceParams.faceProcessWidth = value;
-            detector!.poseParams.poseProcessWidth = value;
+            detector!.handParams!.handProcessWidth = value;
+            detector!.faceParams!.faceProcessWidth = value;
+            detector!.poseParams!.poseProcessWidth = value;
             updateDetector();
         },
         integer: true,
@@ -85,15 +85,15 @@ const Controller = () => {
     const tfliteProcessHeightSliderProps: CommonSliderProps = {
         id: "tflite-process-height-slider",
         title: "tflite process height",
-        currentValue: detector ? detector!.faceParams.faceProcessHeight : 300,
+        currentValue: detector?.faceParams?.faceProcessHeight || 300,
         max: 1000,
         min: 100,
         step: 10,
         width: "30%",
         onChange: (value: number) => {
-            detector!.handParams.handProcessHeight = value;
-            detector!.faceParams.faceProcessHeight = value;
-            detector!.poseParams.poseProcessHeight = value;
+            detector!.handParams!.handProcessHeight = value;
+            detector!.faceParams!.faceProcessHeight = value;
+            detector!.poseParams!.poseProcessHeight = value;
             updateDetector();
         },
         integer: true,
@@ -102,14 +102,14 @@ const Controller = () => {
     const movingAverageWindowSliderProps: CommonSliderProps = {
         id: "moving-average-window-slider",
         title: "moving average window",
-        currentValue: detector ? detector!.faceParams.faceMovingAverageWindow : 1,
+        currentValue: detector?.faceParams?.faceMovingAverageWindow || 1,
         max: 100,
         min: 1,
         step: 1,
         width: "30%",
         onChange: (value: number) => {
-            detector!.faceParams.faceMovingAverageWindow = value;
-            detector!.poseParams.poseMovingAverageWindow = value;
+            detector!.faceParams!.faceMovingAverageWindow = value;
+            detector!.poseParams!.poseMovingAverageWindow = value;
             updateDetector();
         },
         integer: true,
@@ -118,14 +118,14 @@ const Controller = () => {
     const affineResizedSliderProps: CommonSliderProps = {
         id: "affine-resized-slider",
         title: "affine resized ",
-        currentValue: detector ? detector!.handParams.handAffineResizedFactor : 2,
+        currentValue: detector?.handParams?.handAffineResizedFactor || 2,
         max: 8,
         min: 1,
         step: 1,
         width: "30%",
         onChange: (value: number) => {
-            detector!.handParams.handAffineResizedFactor = value;
-            detector!.poseParams.poseAffineResizedFactor = value;
+            detector!.handParams!.handAffineResizedFactor = value;
+            detector!.poseParams!.poseAffineResizedFactor = value;
             updateDetector();
         },
         integer: true,
@@ -148,13 +148,13 @@ const Controller = () => {
     const calcModeSliderProps: CommonSliderProps = {
         id: "calcmode-slider",
         title: "calcmode(debug) ",
-        currentValue: detector ? detector!.poseParams.poseCropExt : 0,
+        currentValue: detector?.poseParams?.poseCropExt || 0,
         max: 2,
         min: 0,
         step: 1,
         width: "30%",
         onChange: (value: number) => {
-            detector!.poseParams.poseCropExt = value;
+            detector!.poseParams!.poseCropExt = value;
             updateDetector();
         },
         integer: true,

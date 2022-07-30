@@ -69,10 +69,14 @@ export const AppStateProvider = ({ children }: Props) => {
 
     //// (1-2) detector初期化
     useEffect(() => {
-        detectorRef.current = new MotionDetector();
-        detectorRef.current.setEnableFullbodyCapture(true);
-        detectorRef.current.initializeManagers();
-        setDetector(detectorRef.current);
+        const initialize = async () => {
+            detectorRef.current = new MotionDetector();
+            await detectorRef.current.initialize();
+            await detectorRef.current.setEnableFullbodyCapture(true);
+            await detectorRef.current.initializeManagers();
+            setDetector(detectorRef.current);
+        };
+        initialize();
     }, []);
 
     //// (1-3) THREE 初期化

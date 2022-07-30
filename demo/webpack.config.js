@@ -3,8 +3,8 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = {
-    mode: "development",
-    // mode: "production",
+    // mode: "development",
+    mode: "production",
     entry: path.resolve(__dirname, "src/index.tsx"),
     output: {
         path: path.resolve(__dirname, "dist"),
@@ -32,6 +32,8 @@ module.exports = {
                 test: /\.css$/,
                 use: ["style-loader", { loader: "css-loader", options: { importLoaders: 1 } }, "postcss-loader"],
             },
+            { test: /\.bin$/, type: "asset/resource" },
+            { test: /\.wasm$/, type: "asset/resource" },
             {
                 test: /\.html$/,
                 loader: "html-loader",

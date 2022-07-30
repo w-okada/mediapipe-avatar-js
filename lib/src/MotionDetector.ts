@@ -1,14 +1,9 @@
 import * as kalido from "./kalido"
-import { MediapipeMixConfig, generateMediapipeMixDefaultConfig, MediapipeMixOperationParams, generateDefaultMediapipeMixParams, MediapipeMixWorkerManager, HandPredictionEx, FacePredictionEx, PosePredictionEx, OperationType } from "@dannadori/mediapipe-mix-worker-js"
+import { MediapipeMix2Config, MediapipeMix2OperationParams, MediapipeMix2WorkerManager, HandPredictionEx, FacePredictionEx, PosePredictionEx, OperationType } from "@dannadori/mediapipe-mix2-worker-js"
 export type { HandPredictionEx, FacePredictionEx, PosePredictionEx }
-const initialConfig: MediapipeMixConfig = generateMediapipeMixDefaultConfig()
-const initialParams: MediapipeMixOperationParams = generateDefaultMediapipeMixParams()
-initialParams.faceProcessWidth = 300
-initialParams.faceProcessHeight = 300
-initialParams.handProcessWidth = 300
-initialParams.handProcessHeight = 300
-initialParams.poseProcessWidth = 300
-initialParams.poseProcessHeight = 300
+// const initialConfig: MediapipeMixConfig = generateMediapipeMixDefaultConfig()
+// const initialParams: MediapipeMixOperationParams = generateDefaultMediapipeMixParams()
+
 
 export type MotionDetectorResult = {
     hands: HandPredictionEx | null
@@ -26,34 +21,61 @@ export type MotionDetectorResult = {
 export class MotionDetector {
     enableFullBodyCapture: boolean = true
 
-    handDetector = new MediapipeMixWorkerManager()
-    handConfig: MediapipeMixConfig
-    handParams: MediapipeMixOperationParams
-    faceDetector = new MediapipeMixWorkerManager()
-    faceConfig: MediapipeMixConfig
-    faceParams: MediapipeMixOperationParams
-    poseDetector = new MediapipeMixWorkerManager()
-    poseConfig: MediapipeMixConfig
-    poseParams: MediapipeMixOperationParams
+    handDetector = new MediapipeMix2WorkerManager()
+    handConfig?: MediapipeMix2Config
+    handParams?: MediapipeMix2OperationParams
+    faceDetector = new MediapipeMix2WorkerManager()
+    faceConfig?: MediapipeMix2Config
+    faceParams?: MediapipeMix2OperationParams
+    poseDetector = new MediapipeMix2WorkerManager()
+    poseConfig?: MediapipeMix2Config
+    poseParams?: MediapipeMix2OperationParams
 
     //////////////////////////////////////////////
     // *** (A) Constructor and Configuration *** 
     //// (A-1) constructor   
     //////////////////////////////////////////////
-    constructor(config: MediapipeMixConfig = initialConfig, params: MediapipeMixOperationParams = initialParams) {
-        this.handConfig = JSON.parse(JSON.stringify(config))
-        this.handConfig.processOnLocal = false
+    initialize = async (_config?: MediapipeMix2Config, _params?: MediapipeMix2OperationParams) => {
+        const config = _config ? _config : await this.handDetector.generateDefaultConfig()
+        const params = _params ? _params : this.handDetector.generateDefaultMediapipeMixParams()
+
+        params.faceProcessWidth = 300
+        params.faceProcessHeight = 300
+        params.handProcessWidth = 300
+        params.handProcessHeight = 300
+        params.poseProcessWidth = 300
+        params.poseProcessHeight = 300
+
+        config.processOnLocal = false
+
+        this.handConfig = config
         this.handParams = JSON.parse(JSON.stringify(params))
-        this.handParams.operationType = OperationType.hand
-        this.faceConfig = JSON.parse(JSON.stringify(config))
-        this.faceConfig.processOnLocal = false
+        this.handParams!.operationType = OperationType.hand
+
+        this.faceConfig = config
         this.faceParams = JSON.parse(JSON.stringify(params))
-        this.faceParams.operationType = OperationType.face
-        this.poseConfig = JSON.parse(JSON.stringify(config))
-        this.poseConfig.processOnLocal = false
+        this.faceParams!.operationType = OperationType.face
+
+        this.poseConfig = config
         this.poseParams = JSON.parse(JSON.stringify(params))
-        this.poseParams.operationType = OperationType.pose
+        this.poseParams!.operationType = OperationType.pose
         console.log("Constructor", this.faceParams)
+
+
+        // this.handConfig = JSON.parse(JSON.stringify(config))
+        // this.handConfig!.processOnLocal = false
+        // this.handParams = JSON.parse(JSON.stringify(params))
+        // this.handParams!.operationType = OperationType.hand
+        // this.faceConfig = JSON.parse(JSON.stringify(config))
+        // this.faceConfig!.processOnLocal = false
+        // this.faceParams = JSON.parse(JSON.stringify(params))
+        // this.faceParams!.operationType = OperationType.face
+        // this.poseConfig = JSON.parse(JSON.stringify(config))
+        // this.poseConfig!.processOnLocal = false
+        // this.poseParams = JSON.parse(JSON.stringify(params))
+        // this.poseParams!.operationType = OperationType.pose
+        // console.log("Constructor", this.faceParams)
+
     }
     //////////////////////////////////////////
     //// (A-2) common configuration   
@@ -64,27 +86,27 @@ export class MotionDetector {
     //// (A-3) reconfiguration   
     //////////////////////////////////////////
     setTFLiteProcessSize = (width: number, height: number) => {
-        this.handParams.handProcessWidth = width
-        this.handParams.handProcessHeight = height
-        this.faceParams.faceProcessWidth = width
-        this.faceParams.faceProcessHeight = height
-        this.poseParams.poseProcessWidth = width
-        this.poseParams.poseProcessHeight = height
+        this.handParams!.handProcessWidth = width
+        this.handParams!.handProcessHeight = height
+        this.faceParams!.faceProcessWidth = width
+        this.faceParams!.faceProcessHeight = height
+        this.poseParams!.poseProcessWidth = width
+        this.poseParams!.poseProcessHeight = height
     }
     setTFLiteAffineResizedFactor = (size: number) => {
-        this.handParams.handAffineResizedFactor = size
-        this.poseParams.poseAffineResizedFactor = size
+        this.handParams!.handAffineResizedFactor = size
+        this.poseParams!.poseAffineResizedFactor = size
     }
     setMovingAverageWindow = (size: number) => {
-        this.faceParams.faceMovingAverageWindow = size
-        this.poseParams.poseMovingAverageWindow = size
+        this.faceParams!.faceMovingAverageWindow = size
+        this.poseParams!.poseMovingAverageWindow = size
     }
     setCalcMode = (mode: number) => {
-        this.poseParams.poseCalculateMode = mode
+        this.poseParams!.poseCalculateMode = mode
     }
-    setEnableFullbodyCapture = (enable: boolean) => {
+    setEnableFullbodyCapture = async (enable: boolean) => {
         this.enableFullBodyCapture = enable
-        this.initializeManagers()
+        await this.initializeManagers()
     }
 
 
@@ -92,9 +114,10 @@ export class MotionDetector {
     // *** (B) initializeManagers *** 
     //////////////////////////////////////////////
     initializeManagers = async () => {
-        const p1 = this.handDetector.init(this.handConfig)
-        const p2 = this.faceDetector.init(this.faceConfig)
-        const p3 = this.poseDetector.init(this.poseConfig)
+        const p1 = this.handDetector.init(this.handConfig!)
+        const p2 = this.faceDetector.init(this.faceConfig!)
+        const p3 = this.poseDetector.init(this.poseConfig!)
+        // await Promise.all([p2])
         await Promise.all([p1, p2, p3])
     }
 
@@ -168,7 +191,7 @@ export class MotionDetector {
         }
 
         try {
-            this.latestFaces = await this.faceDetector.predict(this.faceParams, snap) as FacePredictionEx
+            this.latestFaces = await this.faceDetector.predict(this.faceParams!, snap) as FacePredictionEx
         } catch (error) {
             console.log("predictFaces:", error)
         }
@@ -199,7 +222,7 @@ export class MotionDetector {
             return "predictHands"
         }
         try {
-            this.latestHands = await this.handDetector.predict(this.handParams, snap) as HandPredictionEx
+            this.latestHands = await this.handDetector.predict(this.handParams!, snap) as HandPredictionEx
         } catch (error) {
             console.log("predictHands:", error)
         }
@@ -243,7 +266,7 @@ export class MotionDetector {
             return "predictPoses"
         }
         try {
-            this.latestPoses = await this.poseDetector.predict(this.poseParams, snap)
+            this.latestPoses = await this.poseDetector.predict(this.poseParams!, snap)
         } catch (error) {
             console.log("predictPoses:", error)
         }
