@@ -6,8 +6,8 @@ import { DataTypesOfDataURL, getDataTypeOfDataURL } from "./utils/urlReader";
 import { CommonSlider, CommonSliderProps, CommonSwitch, CommonSwitchProps, Credit, CreditProps, VideoInputSelector, VideoInputSelectorProps } from "@dannadori/demo-base";
 import * as THREE from "three";
 
-import { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { VRM } from "@pixiv/three-vrm";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { VRM, VRMLoaderPlugin } from "@pixiv/three-vrm";
 let GlobalLoopID = 0;
 import { POSE_CONNECTIONS, POSE_LANDMARKS_LEFT, POSE_LANDMARKS_RIGHT } from "@mediapipe/pose";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
@@ -280,7 +280,7 @@ const App = () => {
 
             //// (1-5) アバター読み込み
             const loader = new GLTFLoader();
-
+            loader.register((parser) => new VRMLoaderPlugin(parser))
             // const vrmPath = "./test.vrm";
             const vrmPath = "https://cdn.glitch.com/29e07830-2317-4b15-a044-135e73c7f840%2FAshtra.vrm?v=1630342336981";
             // const vrmPath = "https://yeemachine.github.io/k2021/vrm/Ashtra.vrm";
@@ -288,14 +288,24 @@ const App = () => {
             // const vrmPath = "./kame.vrm";
             // const vrmPath = "./AliciaSolid.vrm";
 
-            const p = new Promise<VRM>((resolve, _reject) => {
-                loader.load(vrmPath, async (gltf: GLTF) => {
-                    const vrm = await VRM.from(gltf);
-                    resolve(vrm);
-                });
-            });
+            // const p = new Promise<VRM>((resolve, _reject) => {
+            //     loader.load(vrmPath, async (gltf: GLTF) => {
+            //         const vrm = gltf.userData.vrm;
+            //         resolve(vrm);
+            //     });
+            // });
+            // const vrm = await p;
+            // scene.add(vrm.scene);
+
+            const p = new Promise<VRM>(async (resolve) => {
+                const gltf = await loader.loadAsync(vrmPath)
+                const vrm = gltf.userData.vrm;
+                // ↓three-vrm のドキュメントあった行。とりあえずコメントアウト
+                // VRMUtils.rotateVRM0(vrm); // rotate the vrm around y axis if the vrm is VRM0.0 
+                resolve(vrm)
+            })
             const vrm = await p;
-            scene.add(vrm.scene);
+            scene.add(vrm.scene)
 
             //// (1-6) light設定
             const light = new THREE.DirectionalLight(0xffffff);
@@ -512,7 +522,7 @@ const App = () => {
             //         node.update(0.01);
             //     });
             // });
-            threeState.charactrer?.springBoneManager?.lateUpdate(0.1);
+            threeState.charactrer?.springBoneManager?.update(0.1);
 
             threeState.renderer!.render(threeState.scene!, threeState.camera!);
             if (GlobalLoopID === LOOP_ID) {
