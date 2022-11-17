@@ -1,5 +1,5 @@
 
-import { GLTFNode, VRM, VRMSchema } from "@pixiv/three-vrm";
+import { VRM, VRMExpressionPresetName, VRMHumanBoneName } from "@pixiv/three-vrm";
 import { Face, Side, TFace, THand, TPose, Utils, Vector } from "./kalido";
 import { PosePredictionEx } from "@dannadori/mediapipe-mix2-worker-js"
 
@@ -91,10 +91,12 @@ export class MediapipeAvator {
     useSlerp: boolean = false
 
     // Animate Rotation Helper function
-    rigRotation = (name: string, rotation = { x: 0, y: 0, z: 0 }, dampener = 1, lerpAmount = 0.3) => {
+    rigRotation = (name: VRMHumanBoneName, rotation = { x: 0, y: 0, z: 0 }, dampener = 1, lerpAmount = 0.3) => {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
-        const Part = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName[name]);
+        // const Part = this.avatar.humanoid!.getNormalizedBoneNode(name);
+        const Part = this.avatar.humanoid!.getRawBoneNode(name);
+
         if (!Part) {
             return;
         }
@@ -103,10 +105,11 @@ export class MediapipeAvator {
         const quaternion = new THREE.Quaternion().setFromEuler(euler);
         Part.quaternion.slerp(quaternion, lerpAmount); // interpolate
     };
-    rigPosition = (name: string, position = { x: 0, y: 0, z: 0 }, dampener = 1, lerpAmount = 0.3) => {
+    rigPosition = (name: VRMHumanBoneName, position = { x: 0, y: 0, z: 0 }, dampener = 1, lerpAmount = 0.3) => {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
-        const Part = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName[name]);
+        // const Part = this.avatar.humanoid!.getNormalizedBoneNode(name);
+        const Part = this.avatar.humanoid!.getRawBoneNode(name);
         if (!Part) {
             return;
         }
@@ -116,41 +119,40 @@ export class MediapipeAvator {
 
     rigFace = (_riggedFace: TFace) => {
         const riggedFace = JSON.parse(JSON.stringify(_riggedFace));
-        this.rigRotation("Neck", riggedFace.head, 0.7);
+        this.rigRotation(VRMHumanBoneName.Neck, riggedFace.head, 0.7);
 
         // Blendshapes and Preset Name Schema
-        const Blendshape = this.avatar.blendShapeProxy!;
-        const PresetName = VRMSchema.BlendShapePresetName;
-
+        const expressionManager = this.avatar.expressionManager!;
+        const PresetName = VRMExpressionPresetName;
         // Simple example without winking. Interpolate based on old blendshape, then stabilize blink with `Kalidokit` helper function.
         // for VRM, 1 is closed, 0 is open.
 
-        riggedFace.eye.l = Vector.lerp(Utils.clamp(1 - riggedFace.eye.l, 0, 1), Blendshape.getValue(PresetName.Blink)!, 0.5);
-        riggedFace.eye.r = Vector.lerp(Utils.clamp(1 - riggedFace.eye.r, 0, 1), Blendshape.getValue(PresetName.Blink)!, 0.5);
+        riggedFace.eye.l = Vector.lerp(Utils.clamp(1 - riggedFace.eye.l, 0, 1), expressionManager.getValue(PresetName.Blink)!, 0.5);
+        riggedFace.eye.r = Vector.lerp(Utils.clamp(1 - riggedFace.eye.r, 0, 1), expressionManager.getValue(PresetName.Blink)!, 0.5);
         riggedFace.eye = Face.stabilizeBlink(riggedFace.eye, riggedFace.head.y);
 
-        Blendshape.setValue(PresetName.Blink, riggedFace.eye.l);
+        expressionManager.setValue(PresetName.Blink, riggedFace.eye.l);
 
         // Interpolate and set mouth blendshapes
-        Blendshape.setValue(PresetName.I, Vector.lerp(riggedFace.mouth.shape.I, Blendshape.getValue(PresetName.I), 0.5));
-        Blendshape.setValue(PresetName.A, Vector.lerp(riggedFace.mouth.shape.A, Blendshape.getValue(PresetName.A), 0.5));
-        Blendshape.setValue(PresetName.E, Vector.lerp(riggedFace.mouth.shape.E, Blendshape.getValue(PresetName.E), 0.5));
-        Blendshape.setValue(PresetName.O, Vector.lerp(riggedFace.mouth.shape.O, Blendshape.getValue(PresetName.O), 0.5));
-        Blendshape.setValue(PresetName.U, Vector.lerp(riggedFace.mouth.shape.U, Blendshape.getValue(PresetName.U), 0.5));
+        expressionManager.setValue(PresetName.Ih, Vector.lerp(riggedFace.mouth.shape.I, expressionManager.getValue(PresetName.Ih), 0.5));
+        expressionManager.setValue(PresetName.Aa, Vector.lerp(riggedFace.mouth.shape.A, expressionManager.getValue(PresetName.Aa), 0.5));
+        expressionManager.setValue(PresetName.Ee, Vector.lerp(riggedFace.mouth.shape.E, expressionManager.getValue(PresetName.Ee), 0.5));
+        expressionManager.setValue(PresetName.Oh, Vector.lerp(riggedFace.mouth.shape.O, expressionManager.getValue(PresetName.Oh), 0.5));
+        expressionManager.setValue(PresetName.Ou, Vector.lerp(riggedFace.mouth.shape.U, expressionManager.getValue(PresetName.Ou), 0.5));
         //PUPILS
         //interpolate pupil and keep a copy of the value
         const lookTarget = new THREE.Euler(Vector.lerp(this.oldLookTarget.x, riggedFace.pupil.y, 0.4), Vector.lerp(this.oldLookTarget.y, riggedFace.pupil.x, 0.4), 0, "XYZ");
         this.oldLookTarget.copy(lookTarget);
-        this.avatar.lookAt!.applyer!.lookAt(lookTarget);
+        this.avatar.lookAt!.applier!.applyYawPitch(lookTarget.y, lookTarget.x);
 
-        this.avatar.blendShapeProxy!.update();
+        this.avatar.expressionManager!.update();
     };
 
 
     rigUpperBody = (riggedPose: TPose) => {
-        this.rigRotation("Hips", riggedPose.Hips.rotation, 0.7);
+        this.rigRotation(VRMHumanBoneName.Hips, riggedPose.Hips.rotation, 0.7);
         this.rigPosition(
-            "Hips",
+            VRMHumanBoneName.Hips,
             {
                 x: riggedPose.Hips.position.x, // Reverse direction
                 y: riggedPose.Hips.position.y + 1, // Add a bit of height
@@ -160,26 +162,26 @@ export class MediapipeAvator {
             0.07
         );
 
-        this.rigRotation("Chest", riggedPose.Spine, 0.25, 0.3);
-        this.rigRotation("Spine", riggedPose.Spine, 0.45, 0.3);
+        this.rigRotation(VRMHumanBoneName.Chest, riggedPose.Spine, 0.25, 0.3);
+        this.rigRotation(VRMHumanBoneName.Spine, riggedPose.Spine, 0.45, 0.3);
 
-        this.rigRotation("RightUpperArm", riggedPose.RightUpperArm, 1, 0.3);
-        this.rigRotation("RightLowerArm", riggedPose.RightLowerArm, 1, 0.3);
-        this.rigRotation("LeftUpperArm", riggedPose.LeftUpperArm, 1, 0.3);
-        this.rigRotation("LeftLowerArm", riggedPose.LeftLowerArm, 1, 0.3);
+        this.rigRotation(VRMHumanBoneName.RightUpperArm, riggedPose.RightUpperArm, 1, 0.3);
+        this.rigRotation(VRMHumanBoneName.RightLowerArm, riggedPose.RightLowerArm, 1, 0.3);
+        this.rigRotation(VRMHumanBoneName.LeftUpperArm, riggedPose.LeftUpperArm, 1, 0.3);
+        this.rigRotation(VRMHumanBoneName.LeftLowerArm, riggedPose.LeftLowerArm, 1, 0.3);
 
     };
 
     rigLegs = (riggedPose: TPose) => {
-        this.rigRotation("LeftUpperLeg", riggedPose.LeftUpperLeg, 1, 0.3);
-        this.rigRotation("LeftLowerLeg", riggedPose.LeftLowerLeg, 1, 0.3);
-        this.rigRotation("RightUpperLeg", riggedPose.RightUpperLeg, 1, 0.3);
-        this.rigRotation("RightLowerLeg", riggedPose.RightLowerLeg, 1, 0.3);
+        this.rigRotation(VRMHumanBoneName.LeftUpperLeg, riggedPose.LeftUpperLeg, 1, 0.3);
+        this.rigRotation(VRMHumanBoneName.LeftLowerLeg, riggedPose.LeftLowerLeg, 1, 0.3);
+        this.rigRotation(VRMHumanBoneName.RightUpperLeg, riggedPose.RightUpperLeg, 1, 0.3);
+        this.rigRotation(VRMHumanBoneName.RightLowerLeg, riggedPose.RightLowerLeg, 1, 0.3);
 
     }
 
     rigLeftHand = (riggedHand: THand<"Left">, poseRig: TPose) => {
-        this.rigRotation("LeftHand", {
+        this.rigRotation(VRMHumanBoneName.LeftHand, {
             // Combine pose rotation Z and hand rotation X Y
             z: poseRig.LeftHand.z,
             y: riggedHand.LeftWrist.y,
@@ -190,25 +192,36 @@ export class MediapipeAvator {
             // x: riggedHand.LeftWrist.x,
 
         });
-        this.rigRotation("LeftRingProximal", riggedHand.LeftRingProximal);
-        this.rigRotation("LeftRingIntermediate", riggedHand.LeftRingIntermediate);
-        this.rigRotation("LeftRingDistal", riggedHand.LeftRingDistal);
-        this.rigRotation("LeftIndexProximal", riggedHand.LeftIndexProximal);
-        this.rigRotation("LeftIndexIntermediate", riggedHand.LeftIndexIntermediate);
-        this.rigRotation("LeftIndexDistal", riggedHand.LeftIndexDistal);
-        this.rigRotation("LeftMiddleProximal", riggedHand.LeftMiddleProximal);
-        this.rigRotation("LeftMiddleIntermediate", riggedHand.LeftMiddleIntermediate);
-        this.rigRotation("LeftMiddleDistal", riggedHand.LeftMiddleDistal);
-        this.rigRotation("LeftThumbProximal", riggedHand.LeftThumbProximal);
-        this.rigRotation("LeftThumbIntermediate", riggedHand.LeftThumbIntermediate);
-        this.rigRotation("LeftThumbDistal", riggedHand.LeftThumbDistal);
-        this.rigRotation("LeftLittleProximal", riggedHand.LeftLittleProximal);
-        this.rigRotation("LeftLittleIntermediate", riggedHand.LeftLittleIntermediate);
-        this.rigRotation("LeftLittleDistal", riggedHand.LeftLittleDistal);
+        this.rigRotation(VRMHumanBoneName.LeftRingProximal, riggedHand.LeftRingProximal);
+        this.rigRotation(VRMHumanBoneName.LeftRingIntermediate, riggedHand.LeftRingIntermediate);
+        this.rigRotation(VRMHumanBoneName.LeftRingDistal, riggedHand.LeftRingDistal);
+        this.rigRotation(VRMHumanBoneName.LeftIndexProximal, riggedHand.LeftIndexProximal);
+        this.rigRotation(VRMHumanBoneName.LeftIndexIntermediate, riggedHand.LeftIndexIntermediate);
+        this.rigRotation(VRMHumanBoneName.LeftIndexDistal, riggedHand.LeftIndexDistal);
+        this.rigRotation(VRMHumanBoneName.LeftMiddleProximal, riggedHand.LeftMiddleProximal);
+        this.rigRotation(VRMHumanBoneName.LeftMiddleIntermediate, riggedHand.LeftMiddleIntermediate);
+        this.rigRotation(VRMHumanBoneName.LeftMiddleDistal, riggedHand.LeftMiddleDistal);
+        this.rigRotation(VRMHumanBoneName.LeftThumbMetacarpal, riggedHand.LeftThumbProximal);
+
+        // Three-VRM 1.0でマップが変わっているようだ。
+        // /**
+        //  * A map from old thumb bone names to new thumb bone names
+        //  */
+        // const thumbBoneNameMap: { [key: string]: V1VRMSchema.HumanoidHumanBoneName | undefined } = {
+        //     leftThumbProximal: 'leftThumbMetacarpal',
+        //     leftThumbIntermediate: 'leftThumbProximal',
+        //     rightThumbProximal: 'rightThumbMetacarpal',
+        //     rightThumbIntermediate: 'rightThumbProximal',
+        //   };
+        this.rigRotation(VRMHumanBoneName.LeftThumbProximal, riggedHand.LeftThumbIntermediate);
+        this.rigRotation(VRMHumanBoneName.LeftThumbDistal, riggedHand.LeftThumbDistal);
+        this.rigRotation(VRMHumanBoneName.LeftLittleProximal, riggedHand.LeftLittleProximal);
+        this.rigRotation(VRMHumanBoneName.LeftLittleIntermediate, riggedHand.LeftLittleIntermediate);
+        this.rigRotation(VRMHumanBoneName.LeftLittleDistal, riggedHand.LeftLittleDistal);
     }
 
     rigRightHand = (riggedHand: THand<"Right">, poseRig: TPose) => {
-        this.rigRotation("RightHand", {
+        this.rigRotation(VRMHumanBoneName.RightHand, {
             // Combine Z axis from pose hand and X/Y axis from hand wrist rotation
             z: poseRig.RightHand.z,
             y: riggedHand.RightWrist.y,
@@ -219,21 +232,22 @@ export class MediapipeAvator {
             // x: riggedHand.RightWrist.x,
 
         });
-        this.rigRotation("RightRingProximal", riggedHand.RightRingProximal);
-        this.rigRotation("RightRingIntermediate", riggedHand.RightRingIntermediate);
-        this.rigRotation("RightRingDistal", riggedHand.RightRingDistal);
-        this.rigRotation("RightIndexProximal", riggedHand.RightIndexProximal);
-        this.rigRotation("RightIndexIntermediate", riggedHand.RightIndexIntermediate);
-        this.rigRotation("RightIndexDistal", riggedHand.RightIndexDistal);
-        this.rigRotation("RightMiddleProximal", riggedHand.RightMiddleProximal);
-        this.rigRotation("RightMiddleIntermediate", riggedHand.RightMiddleIntermediate);
-        this.rigRotation("RightMiddleDistal", riggedHand.RightMiddleDistal);
-        this.rigRotation("RightThumbProximal", riggedHand.RightThumbProximal);
-        this.rigRotation("RightThumbIntermediate", riggedHand.RightThumbIntermediate);
-        this.rigRotation("RightThumbDistal", riggedHand.RightThumbDistal);
-        this.rigRotation("RightLittleProximal", riggedHand.RightLittleProximal);
-        this.rigRotation("RightLittleIntermediate", riggedHand.RightLittleIntermediate);
-        this.rigRotation("RightLittleDistal", riggedHand.RightLittleDistal);
+        this.rigRotation(VRMHumanBoneName.RightRingProximal, riggedHand.RightRingProximal);
+        this.rigRotation(VRMHumanBoneName.RightRingIntermediate, riggedHand.RightRingIntermediate);
+        this.rigRotation(VRMHumanBoneName.RightRingDistal, riggedHand.RightRingDistal);
+        this.rigRotation(VRMHumanBoneName.RightIndexProximal, riggedHand.RightIndexProximal);
+        this.rigRotation(VRMHumanBoneName.RightIndexIntermediate, riggedHand.RightIndexIntermediate);
+        this.rigRotation(VRMHumanBoneName.RightIndexDistal, riggedHand.RightIndexDistal);
+        this.rigRotation(VRMHumanBoneName.RightMiddleProximal, riggedHand.RightMiddleProximal);
+        this.rigRotation(VRMHumanBoneName.RightMiddleIntermediate, riggedHand.RightMiddleIntermediate);
+        this.rigRotation(VRMHumanBoneName.RightMiddleDistal, riggedHand.RightMiddleDistal);
+        // THREE-VRM 1.0でのマップ変更(leftを参照)
+        this.rigRotation(VRMHumanBoneName.RightThumbMetacarpal, riggedHand.RightThumbProximal);
+        this.rigRotation(VRMHumanBoneName.RightThumbProximal, riggedHand.RightThumbIntermediate);
+        this.rigRotation(VRMHumanBoneName.RightThumbDistal, riggedHand.RightThumbDistal);
+        this.rigRotation(VRMHumanBoneName.RightLittleProximal, riggedHand.RightLittleProximal);
+        this.rigRotation(VRMHumanBoneName.RightLittleIntermediate, riggedHand.RightLittleIntermediate);
+        this.rigRotation(VRMHumanBoneName.RightLittleDistal, riggedHand.RightLittleDistal);
 
     }
 
@@ -265,9 +279,9 @@ export class MediapipeAvator {
     // 以下はupdatePoseWithRawの処理
     ///////////////////////////////////////////////////////////////////////////////////
     rigUpperShaft = (riggedPose: TPose) => {
-        this.rigRotation("Hips", riggedPose.Hips.rotation, 0.7);
+        this.rigRotation(VRMHumanBoneName.Hips, riggedPose.Hips.rotation, 0.7);
         this.rigPosition(
-            "Hips",
+            VRMHumanBoneName.Hips,
             {
                 x: riggedPose.Hips.position.x, // Reverse direction
                 y: riggedPose.Hips.position.y + 1, // Add a bit of height
@@ -277,8 +291,8 @@ export class MediapipeAvator {
             0.07
         );
 
-        this.rigRotation("Chest", riggedPose.Spine, 0.25, 0.3);
-        this.rigRotation("Spine", riggedPose.Spine, 0.45, 0.3);
+        this.rigRotation(VRMHumanBoneName.Chest, riggedPose.Spine, 0.25, 0.3);
+        this.rigRotation(VRMHumanBoneName.Spine, riggedPose.Spine, 0.45, 0.3);
     };
 
     getArmPointTFList = (posePrediction: PosePredictionEx, shoulder: number, elbow: number, wrist: number) => {
@@ -297,9 +311,9 @@ export class MediapipeAvator {
     getTargetPosition = (avatar: VRM, side: "Left" | "Right", vector: THREE.Vector3) => {
         let VRMShoulder
         if (side == "Left") {
-            VRMShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftShoulder)
+            VRMShoulder = avatar.humanoid!.getRawBoneNode(VRMHumanBoneName.LeftShoulder)
         } else {
-            VRMShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightShoulder)
+            VRMShoulder = avatar.humanoid!.getRawBoneNode(VRMHumanBoneName.RightShoulder)
         }
         if (!VRMShoulder) {
             return null
@@ -317,8 +331,8 @@ export class MediapipeAvator {
 
     getTargetPosition2 = (avatar: VRM, _side: "Left" | "Right", vector: THREE.Vector3) => {
 
-        const VRMLeftShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftShoulder)
-        const VRMRightShoulder = avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightShoulder)
+        const VRMLeftShoulder = avatar.humanoid!.getRawBoneNode(VRMHumanBoneName.LeftShoulder)
+        const VRMRightShoulder = avatar.humanoid!.getRawBoneNode(VRMHumanBoneName.RightShoulder)
 
         if (!VRMLeftShoulder || !VRMRightShoulder) {
             return null
@@ -338,7 +352,7 @@ export class MediapipeAvator {
     }
 
 
-    moveArm = (joint: GLTFNode, effecter: GLTFNode, target: THREE.Vector3, slerp: boolean) => {
+    moveArm = (joint: THREE.Object3D, effecter: THREE.Object3D, target: THREE.Vector3, slerp: boolean) => {
         const _goalPosition = new THREE.Vector3(target.x, target.y, target.z);
         // 注目関節のワールド座標・姿勢等を取得する
         const _jointPosition = new THREE.Vector3();
@@ -419,9 +433,9 @@ export class MediapipeAvator {
         // (2) VRM処理
         //// (2-1) 左腕
         ////// (2-1-1) 上腕、下腕、手首のボーンを取得
-        const leftUpperArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftUpperArm)!
-        const leftLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftLowerArm)!
-        const leftHand = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.LeftHand)!
+        const leftUpperArm = this.avatar.humanoid!.getRawBoneNode(VRMHumanBoneName.LeftUpperArm)!
+        const leftLowerArm = this.avatar.humanoid!.getRawBoneNode(VRMHumanBoneName.LeftLowerArm)!
+        const leftHand = this.avatar.humanoid!.getRawBoneNode(VRMHumanBoneName.LeftHand)!
 
         ////// (2-1-2) 上腕の処理 (右腕のTFを使う。)
         let elbowTargetPosition = this.getTargetPosition2(this.avatar, "Left", rightElbowFromShoulderVecTF)
@@ -439,9 +453,9 @@ export class MediapipeAvator {
 
         //// (2-2) 右腕
         ////// (2-2-1) 上腕、下腕、手首のボーンを取得
-        const rightUpperArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightUpperArm)!
-        const rightLowerArm = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightLowerArm)!
-        const rightHand = this.avatar.humanoid!.getBoneNode(VRMSchema.HumanoidBoneName.RightHand)!
+        const rightUpperArm = this.avatar.humanoid!.getRawBoneNode(VRMHumanBoneName.RightUpperArm)!
+        const rightLowerArm = this.avatar.humanoid!.getRawBoneNode(VRMHumanBoneName.RightLowerArm)!
+        const rightHand = this.avatar.humanoid!.getRawBoneNode(VRMHumanBoneName.RightHand)!
         ////// (2-1-2) 上腕の処理 (左腕のTFを使う。)
         elbowTargetPosition = this.getTargetPosition(this.avatar, "Right", leftElbowFromShoulderVecTF)
         // let result

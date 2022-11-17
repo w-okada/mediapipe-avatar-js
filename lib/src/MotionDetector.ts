@@ -23,13 +23,13 @@ export class MotionDetector {
 
     handDetector = new MediapipeMix2WorkerManager()
     handConfig?: MediapipeMix2Config
-    handParams?: MediapipeMix2OperationParams
+    handParams: MediapipeMix2OperationParams = this.handDetector.generateDefaultMediapipeMixParams()
     faceDetector = new MediapipeMix2WorkerManager()
     faceConfig?: MediapipeMix2Config
-    faceParams?: MediapipeMix2OperationParams
+    faceParams: MediapipeMix2OperationParams = this.handDetector.generateDefaultMediapipeMixParams()
     poseDetector = new MediapipeMix2WorkerManager()
     poseConfig?: MediapipeMix2Config
-    poseParams?: MediapipeMix2OperationParams
+    poseParams: MediapipeMix2OperationParams = this.handDetector.generateDefaultMediapipeMixParams()
 
     //////////////////////////////////////////////
     // *** (A) Constructor and Configuration *** 
@@ -114,9 +114,13 @@ export class MotionDetector {
     // *** (B) initializeManagers *** 
     //////////////////////////////////////////////
     initializeManagers = async () => {
-        const p1 = this.handDetector.init(this.handConfig!)
-        const p2 = this.faceDetector.init(this.faceConfig!)
-        const p3 = this.poseDetector.init(this.poseConfig!)
+        if (!this.handConfig || !this.faceConfig || !this.poseConfig) {
+            console.warn("[MotionDetector] config is not initialized")
+            return
+        }
+        const p1 = this.handDetector.init(this.handConfig)
+        const p2 = this.faceDetector.init(this.faceConfig)
+        const p3 = this.poseDetector.init(this.poseConfig)
         // await Promise.all([p2])
         await Promise.all([p1, p2, p3])
     }
